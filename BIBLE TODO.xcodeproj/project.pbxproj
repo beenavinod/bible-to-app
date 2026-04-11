@@ -13,6 +13,9 @@
 		39EA624E2F8A216600F37C9D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39EA622D2F8A1AC600F37C9D /* WidgetKit.framework */; };
 		39EA624F2F8A216600F37C9D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39EA622F2F8A1AC600F37C9D /* SwiftUI.framework */; };
 		39EA62602F8A216800F37C9D /* VerseTaskWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 39EA624D2F8A216600F37C9D /* VerseTaskWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		39EA626C2F8A2BA200F37C9D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39EA622D2F8A1AC600F37C9D /* WidgetKit.framework */; };
+		39EA626D2F8A2BA200F37C9D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39EA622F2F8A1AC600F37C9D /* SwiftUI.framework */; };
+		39EA627E2F8A2BA300F37C9D /* LockScreenIconWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 39EA626B2F8A2BA200F37C9D /* LockScreenIconWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +47,13 @@
 			remoteGlobalIDString = 39EA624C2F8A216600F37C9D;
 			remoteInfo = VerseTaskWidgetExtension;
 		};
+		39EA627C2F8A2BA300F37C9D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 39EA61DC2F80CFE500F37C9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 39EA626A2F8A2BA200F37C9D;
+			remoteInfo = LockScreenIconWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -53,6 +63,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				39EA627E2F8A2BA300F37C9D /* LockScreenIconWidgetExtension.appex in Embed Foundation Extensions */,
 				39EA62412F8A1AC700F37C9D /* StreakWidgetExtension.appex in Embed Foundation Extensions */,
 				39EA62602F8A216800F37C9D /* VerseTaskWidgetExtension.appex in Embed Foundation Extensions */,
 			);
@@ -69,6 +80,7 @@
 		39EA622D2F8A1AC600F37C9D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		39EA622F2F8A1AC600F37C9D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		39EA624D2F8A216600F37C9D /* VerseTaskWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VerseTaskWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		39EA626B2F8A2BA200F37C9D /* LockScreenIconWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LockScreenIconWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -92,6 +104,13 @@
 				Info.plist,
 			);
 			target = 39EA624C2F8A216600F37C9D /* VerseTaskWidgetExtension */;
+		};
+		39EA62822F8A2BA300F37C9D /* Exceptions for "LockScreenIconWidget" folder in "LockScreenIconWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 39EA626A2F8A2BA200F37C9D /* LockScreenIconWidgetExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -128,6 +147,14 @@
 				39EA62642F8A216800F37C9D /* Exceptions for "VerseTaskWidget" folder in "VerseTaskWidgetExtension" target */,
 			);
 			path = VerseTaskWidget;
+			sourceTree = "<group>";
+		};
+		39EA626E2F8A2BA200F37C9D /* LockScreenIconWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				39EA62822F8A2BA300F37C9D /* Exceptions for "LockScreenIconWidget" folder in "LockScreenIconWidgetExtension" target */,
+			);
+			path = LockScreenIconWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -172,6 +199,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		39EA62682F8A2BA200F37C9D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				39EA626D2F8A2BA200F37C9D /* SwiftUI.framework in Frameworks */,
+				39EA626C2F8A2BA200F37C9D /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -183,6 +219,7 @@
 				39EA62022F80CFE800F37C9D /* BIBLE TODOUITests */,
 				39EA62312F8A1AC600F37C9D /* StreakWidget */,
 				39EA62502F8A216600F37C9D /* VerseTaskWidget */,
+				39EA626E2F8A2BA200F37C9D /* LockScreenIconWidget */,
 				39EA622C2F8A1AC600F37C9D /* Frameworks */,
 				39EA61E52F80CFE600F37C9D /* Products */,
 			);
@@ -196,6 +233,7 @@
 				39EA61FF2F80CFE800F37C9D /* BIBLE TODOUITests.xctest */,
 				39EA622B2F8A1AC600F37C9D /* StreakWidgetExtension.appex */,
 				39EA624D2F8A216600F37C9D /* VerseTaskWidgetExtension.appex */,
+				39EA626B2F8A2BA200F37C9D /* LockScreenIconWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -226,6 +264,7 @@
 			dependencies = (
 				39EA62402F8A1AC700F37C9D /* PBXTargetDependency */,
 				39EA625F2F8A216800F37C9D /* PBXTargetDependency */,
+				39EA627D2F8A2BA300F37C9D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				39EA61E62F80CFE600F37C9D /* BIBLE TODO */,
@@ -327,6 +366,28 @@
 			productReference = 39EA624D2F8A216600F37C9D /* VerseTaskWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		39EA626A2F8A2BA200F37C9D /* LockScreenIconWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 39EA627F2F8A2BA300F37C9D /* Build configuration list for PBXNativeTarget "LockScreenIconWidgetExtension" */;
+			buildPhases = (
+				39EA62672F8A2BA200F37C9D /* Sources */,
+				39EA62682F8A2BA200F37C9D /* Frameworks */,
+				39EA62692F8A2BA200F37C9D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				39EA626E2F8A2BA200F37C9D /* LockScreenIconWidget */,
+			);
+			name = LockScreenIconWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = LockScreenIconWidgetExtension;
+			productReference = 39EA626B2F8A2BA200F37C9D /* LockScreenIconWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -354,6 +415,9 @@
 					39EA624C2F8A216600F37C9D = {
 						CreatedOnToolsVersion = 26.4;
 					};
+					39EA626A2F8A2BA200F37C9D = {
+						CreatedOnToolsVersion = 26.4;
+					};
 				};
 			};
 			buildConfigurationList = 39EA61DF2F80CFE500F37C9D /* Build configuration list for PBXProject "BIBLE TODO" */;
@@ -375,6 +439,7 @@
 				39EA61FE2F80CFE800F37C9D /* BIBLE TODOUITests */,
 				39EA622A2F8A1AC600F37C9D /* StreakWidgetExtension */,
 				39EA624C2F8A216600F37C9D /* VerseTaskWidgetExtension */,
+				39EA626A2F8A2BA200F37C9D /* LockScreenIconWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -409,6 +474,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		39EA624B2F8A216600F37C9D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		39EA62692F8A2BA200F37C9D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -453,6 +525,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		39EA62672F8A2BA200F37C9D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -475,6 +554,11 @@
 			isa = PBXTargetDependency;
 			target = 39EA624C2F8A216600F37C9D /* VerseTaskWidgetExtension */;
 			targetProxy = 39EA625E2F8A216800F37C9D /* PBXContainerItemProxy */;
+		};
+		39EA627D2F8A2BA300F37C9D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 39EA626A2F8A2BA200F37C9D /* LockScreenIconWidgetExtension */;
+			targetProxy = 39EA627C2F8A2BA300F37C9D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -903,6 +987,69 @@
 			};
 			name = Release;
 		};
+		39EA62802F8A2BA300F37C9D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LockScreenIconWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LockScreenIconWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "abvy.BIBLE-TODO.LockScreenIconWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		39EA62812F8A2BA300F37C9D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LockScreenIconWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LockScreenIconWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "abvy.BIBLE-TODO.LockScreenIconWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -956,6 +1103,15 @@
 			buildConfigurations = (
 				39EA62622F8A216800F37C9D /* Debug */,
 				39EA62632F8A216800F37C9D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		39EA627F2F8A2BA300F37C9D /* Build configuration list for PBXNativeTarget "LockScreenIconWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				39EA62802F8A2BA300F37C9D /* Debug */,
+				39EA62812F8A2BA300F37C9D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
