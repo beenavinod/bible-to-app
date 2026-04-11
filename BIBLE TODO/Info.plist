@@ -8,5 +8,7 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save shareable verse and streak cards to your photo library.</string>
 </dict>
 </plist>

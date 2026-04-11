@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: HomeViewModel
+    @State private var sharePayload: ShareDrawerPayload?
 
     init(appState: AppState) {
         _viewModel = StateObject(
@@ -21,7 +22,8 @@ struct HomeView: View {
                             title: "Daily Verse",
                             subtitle: viewModel.todayRecord?.verse.date.formatted(.dateTime.weekday(.wide).month(.wide).day()) ?? Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day()),
                             palette: appState.palette,
-                            showsBackButton: true
+                            showsBackButton: true,
+                            onShareTap: shareAction
                         )
 
                         if let record = viewModel.todayRecord {
@@ -46,6 +48,16 @@ struct HomeView: View {
             await viewModel.load()
         }
         .sensoryFeedback(.success, trigger: viewModel.didCompleteTask)
+        .sheet(item: $sharePayload) { payload in
+            ShareDrawerSheet(payload: payload, palette: appState.palette)
+                .presentationDetents([.height(520), .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var shareAction: (() -> Void)? {
+        guard let record = viewModel.todayRecord else { return nil }
+        return { sharePayload = .verse(record) }
     }
 
     private func verseCard(record: DailyRecord) -> some View {

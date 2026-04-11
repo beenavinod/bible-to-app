@@ -3,6 +3,7 @@ import SwiftUI
 struct JourneyView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: JourneyViewModel
+    @State private var sharePayload: ShareDrawerPayload?
 
     init(appState: AppState) {
         _viewModel = StateObject(
@@ -17,7 +18,14 @@ struct JourneyView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
-                        TopBar(title: "Journey History", subtitle: nil, palette: appState.palette)
+                        TopBar(
+                            title: "Journey History",
+                            subtitle: nil,
+                            palette: appState.palette,
+                            onShareTap: {
+                                sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
+                            }
+                        )
 
                         streakCard
                         calendarCard
@@ -32,6 +40,11 @@ struct JourneyView: View {
         }
         .task {
             await viewModel.load()
+        }
+        .sheet(item: $sharePayload) { payload in
+            ShareDrawerSheet(payload: payload, palette: appState.palette)
+                .presentationDetents([.height(520), .large])
+                .presentationDragIndicator(.visible)
         }
     }
 

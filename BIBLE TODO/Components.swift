@@ -42,6 +42,8 @@ struct TopBar: View {
     let subtitle: String?
     let palette: AppThemePalette
     var showsBackButton = false
+    /// When set, shows a tappable share control that opens your share flow.
+    var onShareTap: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top) {
@@ -65,9 +67,15 @@ struct TopBar: View {
 
             Spacer()
 
-            Image(systemName: "square.and.arrow.up")
-                .font(.headline)
-                .foregroundStyle(palette.primaryText)
+            if let onShareTap {
+                Button(action: onShareTap) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.headline)
+                        .foregroundStyle(palette.primaryText)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Share")
+            }
         }
         .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
