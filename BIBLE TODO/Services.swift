@@ -15,6 +15,10 @@ protocol AppPersistence {
     func setSelectedBackground(_ background: AppBackground)
     func widgetsEnabled() -> Bool
     func setWidgetsEnabled(_ isEnabled: Bool)
+    func hasCompletedOnboarding() -> Bool
+    func setHasCompletedOnboarding(_ hasCompleted: Bool)
+    func preferredName() -> String?
+    func setPreferredName(_ name: String?)
 }
 
 final class UserDefaultsPersistence: AppPersistence {
@@ -23,6 +27,8 @@ final class UserDefaultsPersistence: AppPersistence {
         static let selectedTheme = "selectedTheme"
         static let selectedBackground = "selectedBackground"
         static let widgetsEnabled = "widgetsEnabled"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
+        static let preferredName = "preferredName"
     }
 
     private let defaults: UserDefaults
@@ -77,6 +83,22 @@ final class UserDefaultsPersistence: AppPersistence {
 
     func setWidgetsEnabled(_ isEnabled: Bool) {
         defaults.set(isEnabled, forKey: Key.widgetsEnabled)
+    }
+
+    func hasCompletedOnboarding() -> Bool {
+        defaults.bool(forKey: Key.hasCompletedOnboarding)
+    }
+
+    func setHasCompletedOnboarding(_ hasCompleted: Bool) {
+        defaults.set(hasCompleted, forKey: Key.hasCompletedOnboarding)
+    }
+
+    func preferredName() -> String? {
+        defaults.string(forKey: Key.preferredName)
+    }
+
+    func setPreferredName(_ name: String?) {
+        defaults.set(name, forKey: Key.preferredName)
     }
 }
 
@@ -149,4 +171,27 @@ final class MockBibleService: BibleService {
             return DailyRecord(id: UUID(), verse: verse, completed: item.completed)
         }
     }
+}
+
+/// Stable in-memory persistence for SwiftUI previews (avoids `UserDefaults` side effects and duplicate `AppState` issues).
+final class PreviewPersistence: AppPersistence {
+    private var completedIDs: Set<UUID> = []
+    private var theme: AppTheme = .oliveMist
+    private var background: AppBackground = .plain
+    private var widgets: Bool = true
+    private var onboardingDone: Bool = false
+    private var name: String? = "Beena"
+
+    func completedRecordIDs() -> Set<UUID> { completedIDs }
+    func setCompletedRecordIDs(_ ids: Set<UUID>) { completedIDs = ids }
+    func selectedTheme() -> AppTheme { theme }
+    func setSelectedTheme(_ theme: AppTheme) { self.theme = theme }
+    func selectedBackground() -> AppBackground { background }
+    func setSelectedBackground(_ background: AppBackground) { self.background = background }
+    func widgetsEnabled() -> Bool { widgets }
+    func setWidgetsEnabled(_ isEnabled: Bool) { widgets = isEnabled }
+    func hasCompletedOnboarding() -> Bool { onboardingDone }
+    func setHasCompletedOnboarding(_ hasCompleted: Bool) { onboardingDone = hasCompleted }
+    func preferredName() -> String? { name }
+    func setPreferredName(_ name: String?) { self.name = name }
 }

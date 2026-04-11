@@ -120,16 +120,7 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView(
-        appState: AppState(
-            service: MockBibleService(),
-            persistence: UserDefaultsPersistence()
-        )
-    )
-    .environmentObject(
-        AppState(
-            service: MockBibleService(),
-            persistence: UserDefaultsPersistence()
-        )
-    )
+    AppStatePreviewRoot { appState in
+        HomeView(appState: appState)
+    }
 }

@@ -5,21 +5,28 @@ struct ContentView: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Group {
-                switch selectedTab {
-                case .home:
-                    HomeView(appState: appState)
-                case .journey:
-                    JourneyView(appState: appState)
-                case .settings:
-                    SettingsView(appState: appState)
-                }
-            }
+        Group {
+            if appState.hasCompletedOnboarding {
+                ZStack(alignment: .bottom) {
+                    Group {
+                        switch selectedTab {
+                        case .home:
+                            HomeView(appState: appState)
+                        case .journey:
+                            JourneyView(appState: appState)
+                        case .settings:
+                            SettingsView(appState: appState)
+                        }
+                    }
 
-            customTabBar
-                .padding(.horizontal, 20)
-                .padding(.bottom, 18)
+                    customTabBar
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 18)
+                }
+            } else {
+                OnboardingFlowView()
+                    .environmentObject(appState)
+            }
         }
     }
 
@@ -70,11 +77,25 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
-        .environmentObject(
-            AppState(
-                service: MockBibleService(),
-                persistence: UserDefaultsPersistence()
-            )
-        )
+    AppStatePreviewRoot { _ in
+        ContentView()
+    }
+}
+
+/// Single `AppState` instance for previews so `StateObject` / `EnvironmentObject` stay in sync.
+struct AppStatePreviewRoot<Content: View>: View {
+    @StateObject private var appState = AppState(
+        service: MockBibleService(),
+        persistence: PreviewPersistence()
+    )
+    @ViewBuilder private let content: (AppState) -> Content
+
+    init(@ViewBuilder content: @escaping (AppState) -> Content) {
+        self.content = content
+    }
+
+    var body: some View {
+        content(appState)
+            .environmentObject(appState)
+    }
 }

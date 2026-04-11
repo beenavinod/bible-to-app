@@ -60,6 +60,14 @@ struct LockScreenIconWidgetEntryView: View {
     var entry: Provider.Entry
 
     var body: some View {
+        content
+            .containerBackground(for: .widget) {
+                Color.clear
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch family {
         case .accessoryCircular:
             accessoryCircularView
