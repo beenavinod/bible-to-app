@@ -6,8 +6,10 @@ struct OnboardingFlowView: View {
     @State private var currentStep = 0
     @State private var draftName = ""
     @State private var selections: [String: String] = [:]
+    @State private var multiSelections: [String: Set<String>] = [:]
 
-    private let totalSteps = 30
+    /// Flow matches onboarding spec: loader → personalization → Pain–Gap–Truth → … → first task → save → paywall.
+    private let totalSteps = 31
 
     var body: some View {
         ZStack {
@@ -76,35 +78,79 @@ struct OnboardingFlowView: View {
 
     @ViewBuilder
     private func screenView(for step: Int) -> some View {
-        // Order follows design reference screenshots (numbered 1…30).
+        // Steps follow onboarding doc: screen numbers in comments are 1-based from the spec.
         switch step {
-        case 0:
+        case 0: // 1 — Loader
             splashScreen(stepKey: step)
-        case 1:
+        case 1: // 2 — Name
             nameScreen(stepKey: step)
-        case 2:
+        case 2: // 3 — Thanks (Continue only)
+            messageScreen(
+                stepKey: step,
+                eyebrow: "Hey \(displayName).",
+                title: nil,
+                subtitle: nil,
+                card: {
+                    OnboardingHeroCard {
+                        Text("Thanks for trusting us on your journey towards God!! Let's try to understand your life a little bit better.")
+                            .font(.title3.weight(.medium))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(appState.palette.primaryText)
+                            .lineSpacing(4)
+                    }
+                },
+                footer: nil,
+                buttonTitle: "Continue"
+            )
+        case 3: // 4 — Read frequency
             choiceScreen(
                 stepKey: step,
-                title: "Hey \(displayName) 👋",
-                subtitle: "Thanks for trusting us on your journey towards\nGod! Let's try to understand your life a little bit\nbetter.\n\nHow often do you read the Bible?",
+                title: "How often do you read the Bible?",
+                subtitle: nil,
                 introCard: nil,
                 options: ["Every day", "A few times a week", "Occasionally", "Rarely"],
                 selectionKey: "read_frequency"
             )
-        case 3:
+        case 4: // 5 — Pain
+            messageScreen(
+                stepKey: step,
+                eyebrow: "\(displayName) — Have you ever felt this?",
+                title: nil,
+                subtitle: nil,
+                card: {
+                    VStack(spacing: 20) {
+                        OnboardingHeroCard {
+                            Text("You've read the Bible\nyou've understood\n\nBut somehow,\nit still feels like something is missing.\n\nLike you could be doing more.\nLiving it more.")
+                                .font(.title3.weight(.medium))
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(appState.palette.primaryText)
+                                .lineSpacing(4)
+                        }
+
+                        OnboardingQuoteCard(
+                            quote: "\"Do not merely listen to the word… and so deceive yourselves. Do what it says.\"",
+                            reference: "James 1:22",
+                            palette: appState.palette
+                        )
+                    }
+                },
+                footer: nil,
+                buttonTitle: "Yes I Have"
+            )
+        case 5: // 6 — Core proposition
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
-                title: "Don't just read the Word.\nLive it.",
+                title: "Don't just read the Word. Live it.",
                 subtitle: nil,
                 card: {
                     OnboardingHeroCard {
-                        Text("Live the Word helps you live the Word of\nGod.")
+                        Text("Live the Word helps you live the Word of God.")
                             .font(.title2.weight(.semibold))
                             .multilineTextAlignment(.center)
                             .foregroundStyle(appState.palette.primaryText)
 
-                        Text("One small action a day based on Bible\nverses...\ncan change who you become.")
+                        Text("One small action a day based on bible verses…\ncan change who you become.")
                             .font(.title3.weight(.medium))
                             .multilineTextAlignment(.center)
                             .foregroundStyle(appState.palette.secondaryText)
@@ -118,56 +164,19 @@ struct OnboardingFlowView: View {
                 footer: nil,
                 buttonTitle: "Start My First Step"
             )
-        case 4:
+        case 6: // 7 — Act on what you read
             choiceScreen(
                 stepKey: step,
-                title: "Let's Be Honest...",
-                subtitle: "How often do you actually act on\nwhat you read in the Bible?",
+                title: "Let's Try to Be Honest here …",
+                subtitle: "How often do you actually act on what you read in the Bible?",
                 introCard: nil,
                 options: ["Almost always", "Sometimes", "Rarely", "I don't"],
                 selectionKey: "act_frequency"
             )
-        case 5:
-            messageScreen(
-                stepKey: step,
-                eyebrow: "\(displayName) — Have you ever felt this?",
-                title: nil,
-                subtitle: nil,
-                card: {
-                    VStack(spacing: 20) {
-                        OnboardingHeroCard {
-                            Text("You've read the Bible...\nyou've understood it...\n\n...but somehow,\nit still feels like something is missing.\n\nLike you could be doing more.\nLiving it more.")
-                                .font(.title3.weight(.medium))
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(appState.palette.primaryText)
-                                .lineSpacing(4)
-                        }
-
-                        OnboardingQuoteCard(
-                            quote: "\"Do not merely listen to the word... and so deceive yourselves. Do what it says.\"",
-                            reference: "James 1:22",
-                            palette: appState.palette
-                        )
-                    }
-                },
-                footer: nil,
-                buttonTitle: "Continue"
-            )
-        case 6:
+        case 7: // 8 — After you read
             choiceScreen(
                 stepKey: step,
-                title: "\(displayName) - Let's Be honest...",
-                subtitle: "Do you feel like you could be living it\nmore?",
-                introCard: nil,
-                options: ["Yes, definitely", "Sometimes", "Not really"],
-                selectionKey: "could_live_more"
-            )
-        case 7:
-            notAloneMessageScreen(stepKey: step)
-        case 8:
-            choiceScreen(
-                stepKey: step,
-                title: "After you read...",
+                title: "After you read…",
                 subtitle: "What usually happens?",
                 introCard: nil,
                 options: [
@@ -178,16 +187,31 @@ struct OnboardingFlowView: View {
                 ],
                 selectionKey: "after_reading"
             )
-        case 9:
+        case 8: // 9 — Bible given for
             choiceScreen(
                 stepKey: step,
-                title: "What do you feel the Bible was given\nfor?",
+                title: "What do you feel the Bible was given for?",
                 subtitle: nil,
                 introCard: nil,
                 options: ["To read and understand", "To guide how we live", "To find comfort", "Not sure"],
                 selectionKey: "bible_purpose"
             )
-        case 10:
+        case 9: // 10 — Gap
+            choiceScreen(
+                stepKey: step,
+                title: "\(displayName) — Let's Be honest…",
+                subtitle: "Do you feel like you could be living it more?",
+                introCard: nil,
+                options: [
+                    "Yes - I want more than this",
+                    "I think about it sometimes",
+                    "I'm not sure yet"
+                ],
+                selectionKey: "could_live_more"
+            )
+        case 10: // 11 — Emotional reframe
+            notAloneMessageScreen(stepKey: step)
+        case 11: // 12 — Reveal
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
@@ -199,7 +223,7 @@ struct OnboardingFlowView: View {
                             .font(.title2.weight(.medium))
                             .foregroundStyle(appState.palette.primaryText)
 
-                        Text("It was meant to be lived")
+                        Text("It was meant to be lived—")
                             .font(.system(.title, design: .serif, weight: .semibold))
                             .foregroundStyle(appState.palette.primaryText)
 
@@ -212,18 +236,7 @@ struct OnboardingFlowView: View {
                 footer: nil,
                 buttonTitle: "Continue"
             )
-        case 11:
-            notAloneMessageScreen(stepKey: step)
-        case 12:
-            choiceScreen(
-                stepKey: step,
-                title: "What would change in your life once you\nstart to live the Bible?",
-                subtitle: nil,
-                introCard: nil,
-                options: ["Better relationships", "Peace", "Self-control", "Purpose"],
-                selectionKey: "life_change"
-            )
-        case 13:
+        case 12: // 13 — Truth drop
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
@@ -231,7 +244,49 @@ struct OnboardingFlowView: View {
                 subtitle: nil,
                 card: {
                     OnboardingHeroCard {
-                        Text("But here's the problem...")
+                        Text("Faith is trainable! If you have the right guidance")
+                            .font(.title2.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(appState.palette.primaryText)
+
+                        Text("You practice it everyday and it comes naturally to you")
+                            .font(.title3.weight(.medium))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(appState.palette.secondaryText)
+
+                        Text("Life changes\nwhen you act,\nnot just understand.")
+                            .font(.title2.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(appState.palette.primaryText)
+
+                        Text("Faith isn't just something you feel. It's something you live - daily.")
+                            .font(.system(.body, design: .serif, weight: .regular))
+                            .italic()
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(appState.palette.secondaryText)
+                    }
+                },
+                footer: nil,
+                buttonTitle: "Train my faith"
+            )
+        case 13: // 14 — Value expansion
+            choiceScreen(
+                stepKey: step,
+                title: "What do you think would change in your life once you start to live the Bible?",
+                subtitle: nil,
+                introCard: nil,
+                options: ["Better relationships", "Peace", "Self-control", "Purpose", "All of the above"],
+                selectionKey: "life_change"
+            )
+        case 14: // 15 — Problem
+            messageScreen(
+                stepKey: step,
+                eyebrow: nil,
+                title: nil,
+                subtitle: nil,
+                card: {
+                    OnboardingHeroCard {
+                        Text("But here's the problem…")
                             .font(.title2.weight(.medium))
                             .foregroundStyle(appState.palette.primaryText)
 
@@ -249,43 +304,20 @@ struct OnboardingFlowView: View {
                 footer: nil,
                 buttonTitle: "Continue"
             )
-        case 14:
-            messageScreen(
+        case 15: // 16 — Friction (multi-select)
+            multiSelectScreen(
                 stepKey: step,
-                eyebrow: nil,
-                title: nil,
+                title: "What's stopping you from acting daily?",
                 subtitle: nil,
-                card: {
-                    VStack(spacing: 18) {
-                        OnboardingQuoteCard(
-                            quote: "Faith is trainable!\nIf you have the right guidance",
-                            reference: nil,
-                            palette: appState.palette
-                        )
-
-                        OnboardingHeroCard {
-                            Text("You practice it everyday and it comes naturally\nto you")
-                                .font(.title3.weight(.medium))
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(appState.palette.secondaryText)
-
-                            Text("Life changes when you act,\nnot just understand.")
-                                .font(.title2.weight(.semibold))
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(appState.palette.primaryText)
-
-                            Text("Faith isn't just something you feel.\nIt's something you live - daily.")
-                                .font(.system(.body, design: .serif, weight: .regular))
-                                .italic()
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(appState.palette.secondaryText)
-                        }
-                    }
-                },
-                footer: nil,
-                buttonTitle: "Continue"
+                options: [
+                    "I don't know what to do",
+                    "I'm not consistent",
+                    "I forget",
+                    "I overthink"
+                ],
+                selectionKey: "daily_barriers"
             )
-        case 15:
+        case 16: // 17 — Solution
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
@@ -314,27 +346,40 @@ struct OnboardingFlowView: View {
                     }
                 },
                 footer: "Something you can apply\nin your day.",
-                buttonTitle: "Continue"
+                buttonTitle: "Show me"
             )
-        case 16:
-            choiceScreen(
+        case 17: // 18 — How it works
+            messageScreen(
                 stepKey: step,
-                title: "What's stopping you from acting daily?",
+                eyebrow: nil,
+                title: "How this works — Live the Word provides —",
                 subtitle: nil,
-                introCard: nil,
-                options: ["I don't know what to do", "I'm not consistent", "I forget", "I overthink"],
-                selectionKey: "daily_barrier"
+                card: {
+                    OnboardingInfoListCard(
+                        title: nil,
+                        items: [
+                            "A short Bible verse to (read/pray)",
+                            "Get one simple task from it",
+                            "Apply it in your day",
+                            "Build your streak"
+                        ],
+                        palette: appState.palette,
+                        symbols: ["book.closed", "sparkles", "target", "flame"]
+                    )
+                },
+                footer: "Just a few minutes.\nBut real change.",
+                buttonTitle: "Build my path"
             )
-        case 17:
+        case 18: // 19 — Denomination
             choiceScreen(
                 stepKey: step,
                 title: nil,
-                subtitle: "Different traditions follow the same Word\nin slightly different ways.\n\nTo guide you better...\ntell us what you align with:",
+                subtitle: "Different traditions follow the same Word\nin slightly different ways.\n\nTo guide you better…\ntell us what you align with:",
                 introCard: nil,
                 options: ["Catholic", "Protestant", "Orthodox", "Others", "Not sure / Prefer not to say"],
                 selectionKey: "tradition"
             )
-        case 18:
+        case 19: // 20 — Response
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
@@ -355,29 +400,16 @@ struct OnboardingFlowView: View {
                 footer: nil,
                 buttonTitle: "Continue"
             )
-        case 19:
-            messageScreen(
+        case 20: // 21 — Identity
+            choiceScreen(
                 stepKey: step,
-                eyebrow: nil,
-                title: "How this works - Live the Word provides:",
+                title: "What do you want to grow in?",
                 subtitle: nil,
-                card: {
-                    OnboardingInfoListCard(
-                        title: nil,
-                        items: [
-                            "A short Bible verse to read",
-                            "Get one simple task from it",
-                            "Apply it in your day",
-                            "Build your streak"
-                        ],
-                        palette: appState.palette,
-                        symbols: ["book.closed", "sparkles", "target", "flame"]
-                    )
-                },
-                footer: "Just a few minutes.\nBut real change.",
-                buttonTitle: "Continue"
+                introCard: nil,
+                options: ["Faith", "Discipline", "Kindness", "Purpose", "All of the above"],
+                selectionKey: "growth"
             )
-        case 20:
+        case 21: // 22 — Commitment
             choiceScreen(
                 stepKey: step,
                 title: nil,
@@ -393,16 +425,16 @@ struct OnboardingFlowView: View {
                             .multilineTextAlignment(.center)
                             .foregroundStyle(appState.palette.primaryText)
 
-                        Text("Can you show up for 2 minutes daily to\nlive it?")
+                        Text("Can you show up for 2 minutes daily to live it?")
                             .font(.title3.weight(.medium))
                             .multilineTextAlignment(.center)
                             .foregroundStyle(appState.palette.primaryText)
                     })
                 },
-                options: ["Yes", "I'll try", "Not sure"],
+                options: ["Yes - I commit to this", "I'll show up when I can"],
                 selectionKey: "commitment"
             )
-        case 21:
+        case 22: // 23 — Daily reminder
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
@@ -410,7 +442,7 @@ struct OnboardingFlowView: View {
                 subtitle: nil,
                 card: {
                     OnboardingHeroCard {
-                        Text("It's not about doing more.")
+                        Text("It's not about doing more -")
                             .font(.title2.weight(.regular))
                             .foregroundStyle(appState.palette.primaryText)
 
@@ -425,35 +457,49 @@ struct OnboardingFlowView: View {
                     }
                 },
                 footer: nil,
-                buttonTitle: "Remind Me",
+                buttonTitle: "Set my daily reminder",
                 buttonIcon: "calendar"
             )
-        case 22:
-            choiceScreen(
-                stepKey: step,
-                title: "What do you want to grow in?",
-                subtitle: nil,
-                introCard: nil,
-                options: ["Faith", "Discipline", "Kindness", "Purpose", "All of the above"],
-                selectionKey: "growth"
-            )
-        case 23:
-            loadingScreen(stepKey: step)
-        case 24:
+        case 23: // 24 — Reinforcement
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
-                title: "Congratulations!\nYour journey is ready.",
+                title: nil,
+                subtitle: nil,
+                card: {
+                    OnboardingHeroCard {
+                        Text("Thanks for trusting us on your journey towards God")
+                            .font(.title3.weight(.medium))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(appState.palette.secondaryText)
+
+                        Text("You've already taken a step\nmost people don't.\n\nAnd that's where\nreal change begins.")
+                            .font(.title2.weight(.medium))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(appState.palette.primaryText)
+                            .lineSpacing(4)
+                    }
+                },
+                footer: nil,
+                buttonTitle: "Lets go"
+            )
+        case 24: // 25 — Building loader
+            loadingScreen(stepKey: step)
+        case 25: // 26 — Congratulations
+            messageScreen(
+                stepKey: step,
+                eyebrow: nil,
+                title: "Congratulations! Your journey is ready.",
                 subtitle: "Start living the Word. Beginning today.",
                 card: {
                     VStack(alignment: .leading, spacing: 18) {
-                        Text("This is a simple, structured path to grow closer to God — by living it, one small action at a time.")
+                        Text("This is a simple, structured path\nto grow closer to God -\nBy living it—\none small action at a time.")
                             .font(.title3.weight(.medium))
                             .foregroundStyle(appState.palette.secondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                         OnboardingInfoListCard(
-                            title: "What You Unlock",
+                            title: "What you unlock:",
                             items: [
                                 "Daily Bible-based tasks",
                                 "Simple, guided actions",
@@ -468,49 +514,7 @@ struct OnboardingFlowView: View {
                 buttonTitle: "Start My Journey",
                 topIcon: "sparkles"
             )
-        case 25:
-            messageScreen(
-                stepKey: step,
-                eyebrow: "Thanks for trusting us on your journey towards God",
-                title: nil,
-                subtitle: nil,
-                card: {
-                    OnboardingHeroCard {
-                        Text("You've already taken a step\nmost people don't.\n\nAnd that's where\nreal change begins.")
-                            .font(.title2.weight(.medium))
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(appState.palette.primaryText)
-                            .lineSpacing(4)
-                    }
-                },
-                footer: nil,
-                buttonTitle: "Let's go"
-            )
-        case 26:
-            messageScreen(
-                stepKey: step,
-                eyebrow: nil,
-                title: "Pause Before You Respond",
-                subtitle: nil,
-                card: {
-                    OnboardingTaskPreviewCard(
-                        verse: "\"Be quick to listen, slow to speak...\"",
-                        reference: "James 1:19",
-                        bulletTitle: "Today's Task:",
-                        bullets: [
-                            "Pause before responding",
-                            "Listen fully",
-                            "Respond calmly"
-                        ],
-                        palette: appState.palette
-                    )
-                },
-                footer: nil,
-                buttonTitle: "Mark as Complete"
-            )
-        case 27:
-            celebrationScreen(stepKey: step)
-        case 28:
+        case 26: // 27 — First step ready
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
@@ -522,8 +526,34 @@ struct OnboardingFlowView: View {
                 footer: nil,
                 buttonTitle: "Start My First Task"
             )
-        case 29:
+        case 27: // Day 1 first task
+            messageScreen(
+                stepKey: step,
+                eyebrow: nil,
+                title: "Pause Before You Respond",
+                subtitle: nil,
+                card: {
+                    OnboardingTaskPreviewCard(
+                        verse: "\"Be quick to listen, slow to speak…\"",
+                        reference: "James 1:19",
+                        bulletTitle: "Task:",
+                        bullets: [
+                            "Pause before responding",
+                            "Listen fully",
+                            "Respond calmly"
+                        ],
+                        palette: appState.palette
+                    )
+                },
+                footer: nil,
+                buttonTitle: "Mark as Complete"
+            )
+        case 28: // Completion
+            celebrationScreen(stepKey: step)
+        case 29: // 28 — Save journey
             authScreen(stepKey: step)
+        case 30: // 29 — Paywall (placeholder)
+            paywallScreen(stepKey: step)
         default:
             EmptyView()
         }
@@ -534,7 +564,7 @@ struct OnboardingFlowView: View {
         messageScreen(
             stepKey: stepKey,
             eyebrow: nil,
-            title: "You are not alone",
+            title: "You are not alone here",
             subtitle: nil,
             card: {
                 VStack(spacing: 18) {
@@ -609,6 +639,52 @@ struct OnboardingFlowView: View {
         }
     }
 
+    private func multiSelectScreen(
+        stepKey: Int,
+        title: String?,
+        subtitle: String?,
+        options: [String],
+        selectionKey: String
+    ) -> some View {
+        OnboardingMultiSelectScreen(
+            stepKey: stepKey,
+            title: title,
+            subtitle: subtitle,
+            options: options,
+            selectedOptions: multiSelections[selectionKey] ?? [],
+            palette: appState.palette,
+            onToggle: { option in
+                var set = multiSelections[selectionKey] ?? []
+                if set.contains(option) {
+                    set.remove(option)
+                } else {
+                    set.insert(option)
+                }
+                multiSelections[selectionKey] = set
+            },
+            onContinue: advance
+        )
+    }
+
+    private func paywallScreen(stepKey: Int) -> some View {
+        messageScreen(
+            stepKey: stepKey,
+            eyebrow: nil,
+            title: "Go deeper with Live the Word",
+            subtitle: nil,
+            card: {
+                OnboardingHeroCard {
+                    Text("Paywall placeholder — pricing and plans TBD.")
+                        .font(.title3.weight(.medium))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(appState.palette.secondaryText)
+                }
+            },
+            footer: nil,
+            buttonTitle: "Continue"
+        )
+    }
+
     private func messageScreen<Card: View>(
         stepKey: Int,
         eyebrow: String?,
@@ -652,7 +728,7 @@ struct OnboardingFlowView: View {
                 "Understanding your spiritual goals",
                 "Aligning your journey with God's Word",
                 "Personalising actions for your daily life",
-                "Selecting verse-based tasks",
+                "Selecting/Analysing your verse-based tasks",
                 "Preparing your 30-day growth journey"
             ],
             onFinished: advance
@@ -805,6 +881,88 @@ private struct OnboardingChoiceScreen: View {
     }
 }
 
+private struct OnboardingMultiSelectScreen: View {
+    let stepKey: Int
+    let title: String?
+    let subtitle: String?
+    let options: [String]
+    let selectedOptions: Set<String>
+    let palette: AppThemePalette
+    let onToggle: (String) -> Void
+    let onContinue: () -> Void
+
+    @State private var showHeader = false
+    @State private var visibleOptions = 0
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 22) {
+                Spacer(minLength: 24)
+
+                if title != nil || subtitle != nil {
+                    CardContainer(palette: palette) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            if let title {
+                                Text(title)
+                                    .font(.system(.title2, design: .serif, weight: .semibold))
+                                    .foregroundStyle(palette.primaryText)
+                            }
+
+                            if let subtitle {
+                                Text(subtitle)
+                                    .font(.title3.weight(.medium))
+                                    .foregroundStyle(palette.secondaryText)
+                                    .lineSpacing(4)
+                            }
+
+                            VStack(spacing: 12) {
+                                ForEach(Array(options.enumerated()), id: \.offset) { index, option in
+                                    OnboardingOptionButton(
+                                        title: option,
+                                        isSelected: selectedOptions.contains(option),
+                                        palette: palette,
+                                        action: { onToggle(option) }
+                                    )
+                                    .opacity(visibleOptions > index ? 1 : 0)
+                                    .offset(y: visibleOptions > index ? 0 : 14)
+                                }
+                            }
+                        }
+                    }
+                    .opacity(showHeader ? 1 : 0)
+                    .offset(y: showHeader ? 0 : 22)
+                }
+
+                OnboardingPrimaryButton(
+                    title: "Continue",
+                    systemImage: nil,
+                    palette: palette,
+                    action: onContinue
+                )
+                .opacity(showHeader ? 1 : 0)
+
+                Spacer(minLength: 36)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+            .frame(maxWidth: .infinity)
+        }
+        .task(id: stepKey) {
+            showHeader = false
+            visibleOptions = 0
+            withAnimation(.easeOut(duration: 0.42)) {
+                showHeader = true
+            }
+            for index in options.indices {
+                try? await Task.sleep(for: .milliseconds(90))
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                    visibleOptions = index + 1
+                }
+            }
+        }
+    }
+}
+
 private struct OnboardingMessageScreen: View {
     let stepKey: Int
     let eyebrow: String?
@@ -916,11 +1074,11 @@ private struct OnboardingNameScreen: View {
             Spacer()
 
             VStack(spacing: 10) {
-                Text("What do we call you?")
+                Text("Let's make this journey more personal")
                     .font(.system(.largeTitle, design: .serif, weight: .semibold))
                     .foregroundStyle(palette.primaryText)
 
-                Text("Let's make this journey personal")
+                Text("What should we call you?")
                     .font(.title3.weight(.medium))
                     .foregroundStyle(palette.secondaryText)
             }
@@ -928,7 +1086,7 @@ private struct OnboardingNameScreen: View {
             .offset(y: showContent ? 0 : 20)
 
             VStack(spacing: 16) {
-                TextField("Enter your name", text: $name)
+                TextField("Your name", text: $name)
                     .padding(.horizontal, 20)
                     .frame(height: 58)
                     .background(palette.card)
@@ -984,7 +1142,7 @@ private struct OnboardingLoadingScreen: View {
             Spacer(minLength: 24)
 
             VStack(spacing: 10) {
-                Text("Almost There")
+                Text("Almost there")
                     .font(.caption.weight(.semibold))
                     .textCase(.uppercase)
                     .tracking(1.6)
@@ -1087,13 +1245,10 @@ private struct OnboardingCelebrationScreen: View {
 
             CardContainer(palette: palette) {
                 VStack(spacing: 8) {
-                    Text("Congratulations!")
+                    Text("Congratulations!! — Streak Started: Day 1")
                         .font(.title2.weight(.semibold))
+                        .multilineTextAlignment(.center)
                         .foregroundStyle(palette.primaryText)
-
-                    Text("Streak Started: Day 1 🔥")
-                        .font(.headline)
-                        .foregroundStyle(palette.secondaryText)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
@@ -1108,7 +1263,7 @@ private struct OnboardingCelebrationScreen: View {
                 .opacity(revealCount > 1 ? 1 : 0)
 
             OnboardingPrimaryButton(
-                title: "Save Your Progress",
+                title: "Continue",
                 systemImage: nil,
                 palette: palette,
                 action: onContinue
@@ -1201,20 +1356,20 @@ private struct OnboardingAuthScreen: View {
             Spacer()
 
             VStack(spacing: 10) {
-                Text("Save your progress")
+                Text("Save my journey")
                     .font(.system(.largeTitle, design: .serif, weight: .semibold))
                     .foregroundStyle(palette.primaryText)
 
-                Text("Create an account to track your journey")
+                Text("Sign up to keep your progress safe")
                     .font(.title3.weight(.medium))
                     .foregroundStyle(palette.secondaryText)
             }
             .opacity(showContent ? 1 : 0)
 
             VStack(spacing: 14) {
-                authButton(title: "Continue with Apple", symbol: "apple.logo")
-                authButton(title: "Continue with Google", symbol: "g.circle.fill")
-                authButton(title: "Continue with Email", symbol: "heart")
+                authButton(title: "Apple", symbol: "apple.logo")
+                authButton(title: "Google", symbol: "g.circle.fill")
+                authButton(title: "Email", symbol: "envelope.fill")
             }
             .opacity(showContent ? 1 : 0)
             .offset(y: showContent ? 0 : 22)
@@ -1353,7 +1508,7 @@ private struct OnboardingInfoListCard: View {
         CardContainer(palette: palette) {
             VStack(alignment: .leading, spacing: 16) {
                 if let title {
-                    Text(title.uppercased())
+                    Text(title)
                         .font(.caption.weight(.bold))
                         .foregroundStyle(palette.secondaryText)
                 }
