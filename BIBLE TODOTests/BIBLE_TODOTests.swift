@@ -1,37 +1,23 @@
-//
-//  BIBLE_TODOTests.swift
-//  BIBLE TODOTests
-//
-//  Created by Beena Vinod on 04/04/26.
-//
+import Testing
+@testable import BIBLE_TODO
 
-import XCTest
+@MainActor
+@Test func mockBibleServiceProvidesHistoryAndTodayVerse() async throws {
+    let service = MockBibleService()
 
-final class BIBLE_TODOTests: XCTestCase {
+    let todayVerse = try await service.fetchTodayVerse()
+    let history = try await service.fetchHistory()
+    let summary = try await service.fetchStreakSummary()
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-    }
+    #expect(history.isEmpty == false)
+    #expect(history.contains(where: { $0.verse.id == todayVerse.id }))
+    #expect(summary.totalCompletedDays > 0)
+}
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
+@Test func achievementsUnlockAgainstCurrentStreak() {
+    let cross = Achievement.defaults[0]
+    let church = Achievement.defaults[3]
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-        // XCTest Documentation
-        // https://developer.apple.com/documentation/xctest
-    }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        measure {
-            // Put the code you want to measure the time of here.
-        }
-    }
-
+    #expect(cross.isUnlocked(for: 3))
+    #expect(church.isUnlocked(for: 9) == false)
 }

@@ -24,13 +24,17 @@ final class BIBLE_TODOUITests: XCTestCase {
 
     @MainActor
     func testExample() throws {
-        // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+        XCTAssertTrue(app.staticTexts["TODAY'S ACTION"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Press and hold to complete"].waitForExistence(timeout: 2))
+
+        app.buttons["Journey"].tap()
+        XCTAssertTrue(app.staticTexts["ACHIEVEMENT ICONS"].waitForExistence(timeout: 2))
+
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.staticTexts["Themes"].waitForExistence(timeout: 2))
     }
 
     @MainActor

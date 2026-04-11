@@ -1,32 +1,16 @@
-//
-//  BIBLE_TODOApp.swift
-//  BIBLE TODO
-//
-//  Created by Beena Vinod on 04/04/26.
-//
-
 import SwiftUI
-import SwiftData
 
 @main
 struct BIBLE_TODOApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    @StateObject private var appState = AppState(
+        service: MockBibleService(),
+        persistence: UserDefaultsPersistence()
+    )
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(appState)
         }
-        .modelContainer(sharedModelContainer)
     }
 }
