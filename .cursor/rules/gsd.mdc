@@ -1,0 +1,214 @@
+<!-- gsd-project-start source:PROJECT.md -->
+## Project
+
+**Bible Life — Achievement System**
+
+An achievement system for the Bible Life iOS app that rewards users with persistent, collectible badges when they hit streak milestones (3, 7, 14, 30, 60, 100, and 365 days). Badges are earned once, displayed in a new section within the existing Journey screen, and stored both locally and in Supabase so they survive reinstalls and device changes.
+
+**Core Value:** Users feel recognized and motivated to maintain their daily Bible verse and task habit through visible, permanent milestone badges.
+
+### Constraints
+
+- **Tech stack**: Swift/SwiftUI + Supabase — must use existing patterns and protocols
+- **Non-breaking**: Must not alter existing streak tracking behavior; achievement logic is additive
+- **Persistence**: Dual storage (UserDefaults local cache + Supabase `user_achievements` table) for resilience
+- **Performance**: Badge check on task completion must be lightweight — no extra network calls if badge already earned locally
+- **Visual style**: Minimalist — milestone number with subtle glow or ring effect, consistent with existing app themes
+<!-- gsd-project-end -->
+
+<!-- gsd-stack-start source:codebase/STACK.md -->
+## Technology Stack
+
+## Languages
+- Swift 5 — all application, widget extension, and test source under `BIBLE TODO/`, `StreakWidget/`, `VerseTaskWidget/`, `LockScreenIconWidget/`, `BIBLE TODOTests/`, and `BIBLE TODOUITests/`.
+- Not applicable (no scripting layer or secondary app language in-repo).
+## Runtime
+- iOS (device and Simulator) — deployment target is set in `BIBLE TODO.xcodeproj/project.pbxproj` as `IPHONEOS_DEPLOYMENT_TARGET = 26.4` for project and targets.
+- Swift Package Manager (Xcode-integrated) — direct dependency declared in `BIBLE TODO.xcodeproj/project.pbxproj` (`XCRemoteSwiftPackageReference` for `supabase-swift`).
+- Lockfile: `BIBLE TODO.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` (pins resolved revisions and versions).
+## Frameworks
+- SwiftUI — primary UI (`BIBLE TODO/BIBLE_TODOApp.swift`, views across `BIBLE TODO/`).
+- Combine — reactive state in `BIBLE TODO/ViewModels.swift` and `BIBLE TODO/AppState.swift`.
+- WidgetKit + SwiftUI — widget extensions in `StreakWidget/`, `VerseTaskWidget/`, `LockScreenIconWidget/`.
+- AppIntents — control/intent surfaces in each extension’s `AppIntent.swift` and `*Control.swift` files.
+- ActivityKit + WidgetKit + SwiftUI — Live Activities in `StreakWidget/StreakWidgetLiveActivity.swift`, `VerseTaskWidget/VerseTaskWidgetLiveActivity.swift`, `LockScreenIconWidget/LockScreenIconWidgetLiveActivity.swift`.
+- Photos + UIKit — saving share cards in `BIBLE TODO/ShareableCardViews.swift` (`PHPhotoLibrary`, `ImageRenderer`).
+- Swift Testing (`import Testing`) — unit tests in `BIBLE TODOTests/BIBLE_TODOTests.swift`.
+- XCTest — UI tests in `BIBLE TODOUITests/BIBLE_TODOUITests.swift` and `BIBLE TODOUITests/BIBLE_TODOUITestsLaunchTests.swift`.
+- Xcode project `BIBLE TODO.xcodeproj` (object version 77), schemes under `BIBLE TODO.xcodeproj/xcshareddata/xcschemes/`.
+- Not detected: CocoaPods (`Podfile`), Carthage, standalone `Package.swift` at repo root.
+## Key Dependencies
+- `Supabase` (SwiftPM product from [supabase-swift](https://github.com/supabase/supabase-swift)) — requirement `upToNextMajorVersion` minimum 2.0.0 in `BIBLE TODO.xcodeproj/project.pbxproj`; resolved **2.43.1** in `Package.resolved`. Used in `BIBLE TODO/SupabaseConfig.swift`, `BIBLE TODO/BibleTodoRepository.swift`, `BIBLE TODO/AppState.swift`.
+- `swift-crypto` 4.3.1, `swift-http-types` 1.5.1, `swift-asn1` 1.6.0 — cryptographic and HTTP types for the Supabase stack.
+- `swift-clocks` 1.0.6, `swift-concurrency-extras` 1.3.2, `xctest-dynamic-overlay` 1.9.0 — supporting libraries pulled by the Supabase / Point-Free ecosystem.
+- Not applicable (no server code in this repo).
+## Configuration
+- Build-time values: `Config/AppConfig.xcconfig` defines `SUPABASE_URL` and `SUPABASE_ANON_KEY` and `#include?` optional `Secrets.xcconfig`.
+- Template for local secrets: `Config/Secrets.example.xcconfig` (copy to `Secrets.xcconfig`; gitignored per comments there — do not commit real keys).
+- Runtime read: `BIBLE TODO/Info.plist` maps `SUPABASE_URL` / `SUPABASE_ANON_KEY` from `$(SUPABASE_URL)` / `$(SUPABASE_ANON_KEY)`; `BIBLE TODO/SupabaseConfig.swift` reads them via `Bundle.main` and builds `SupabaseClient` when both are non-empty.
+- Main app Debug/Release use `baseConfigurationReference` → `Config/AppConfig.xcconfig` in `BIBLE TODO.xcodeproj/project.pbxproj`.
+- `BIBLE TODO/Info.plist`: `CFBundleDisplayName` “Bible Life”, photo library add usage string, `UIBackgroundModes` includes `remote-notification` (no in-repo Swift registration for push was found).
+## Platform Requirements
+- macOS with Xcode capable of building iOS targets at the project’s deployment target; Swift 5 toolchain as set in the project.
+- iOS application target “BIBLE TODO” with three embedded widget extensions (`StreakWidgetExtension`, `VerseTaskWidgetExtension`, `LockScreenIconWidgetExtension`) per `BIBLE TODO.xcodeproj/project.pbxproj`.
+<!-- gsd-stack-end -->
+
+<!-- gsd-conventions-start source:CONVENTIONS.md -->
+## Conventions
+
+## Naming Patterns
+- Swift sources use **PascalCase** matching the primary type or screen, e.g. `BIBLE_TODOApp.swift`, `HomeView.swift`, `BibleTodoRepository.swift`, `EmailPasswordAuthForm.swift`.
+- Xcode folder names mirror feature areas: `BIBLE TODO/` (app), `BIBLE TODOTests/`, `BIBLE TODOUITests/`, widget folders `StreakWidget/`, `VerseTaskWidget/`, `LockScreenIconWidget/`.
+- Config uses **PascalCase** xcconfig names: `Config/AppConfig.xcconfig`, `Config/Secrets.example.xcconfig` (actual secrets file is gitignored per project docs).
+- **Protocols** describe roles: `BibleService`, `AppPersistence` in `BIBLE TODO/Services.swift`.
+- **Concrete services** use suffixes: `SignedOutBibleService`, `MockBibleService`, `SupabaseBibleService`, `UserDefaultsPersistence`, `PreviewPersistence`.
+- **Repository** pattern: `BibleTodoRepository` in `BIBLE TODO/BibleTodoRepository.swift`.
+- **View models** end with `ViewModel`: `HomeViewModel`, `JourneyViewModel` in `BIBLE TODO/ViewModels.swift`.
+- **Enums** for app domains: `AppTab`, `AppTheme`, `AppBackground`, `ColorToken` in `BIBLE TODO/Models.swift`; nested enums like `BibleTodoRepository.LaunchDestination` in `BIBLE TODO/BibleTodoRepository.swift`.
+- **Widget scaffolding** often reuses generic names per target (e.g. `Provider`, `StreakEntry` in `StreakWidget/StreakWidget.swift`) — scoped by module.
+- **camelCase** for methods and properties: `fetchTodayVerse()`, `resolveAppLaunchState()`, `completedRecordIDs()`.
+- **Boolean** properties read as predicates: `widgetsEnabled()`, `hasCompletedOnboarding()`, `isConfigured`.
+- **UserDefaults keys** live in a private nested `Key` enum with static `let` names in `UserDefaultsPersistence` (`BIBLE TODO/Services.swift`).
+- Swift properties use **camelCase**; `CodingKeys` map to **snake_case** Supabase columns, e.g. `ProfileRow` in `BIBLE TODO/BibleTodoSupabaseModels.swift`.
+- Encodable payloads sent to Supabase sometimes use **snake_case property names** in Swift (`OnboardingRemotePayload`, `ProfileOnboardingUpdate`) to match JSON keys directly.
+## Code Style
+- No **SwiftLint** or **SwiftFormat** configuration detected in the repo root or project tree.
+- Rely on **Xcode default Swift indentation** and trailing closures where used (SwiftUI `body`, async tasks).
+- Project uses standard **Clang** warning flags (see `BIBLE TODO.xcodeproj/project.pbxproj` build settings): e.g. treat warnings as errors for several Objective-C–related rules, strict prototypes, etc.
+- Swift language version is **5.0** across targets (`SWIFT_VERSION = 5.0` in `project.pbxproj`).
+- **Swift concurrency–related** build settings appear on test targets: `SWIFT_APPROACHABLE_CONCURRENCY = YES`, `SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES`.
+## Import Organization
+- Not applicable (no SPM-style module path aliases; app module is `BIBLE_TODO`).
+## Error Handling
+- Use a single **equatable** `LocalizedError` enum: `BibleTodoRepositoryError` in `BIBLE TODO/BibleTodoSupabaseModels.swift` with `errorDescription` for user-facing strings.
+- **Throw** from async repository and service methods when configuration, auth, or data preconditions fail (`BibleTodoRepository`, `SignedOutBibleService`).
+- **Repository:** `resolveAppLaunchState()` catches generic errors and returns `(.welcome, nil, nil)` instead of surfacing the error (`BIBLE TODO/BibleTodoRepository.swift`).
+- **App bootstrap:** `AppState.bootstrapSupabaseLaunch()` uses `do/catch` and falls back to `.needsAuth` on failure (`BIBLE TODO/AppState.swift`).
+- **View models:** `HomeViewModel.load()` sets `todayRecord = nil` on any failure; `completeTodayTask()` uses `try?` for `syncTaskCompletion` so network failures do not crash the UI (`BIBLE TODO/ViewModels.swift`).
+- Prefer **typed errors** (`BibleTodoRepositoryError` or new cases) over silent `try?` when the user should see feedback or retry.
+- Keep **LocalizedError** descriptions concise and actionable, matching existing cases in `BibleTodoSupabaseModels.swift`.
+## Logging
+- When adding diagnostics, prefer **`os.Logger`** or structured logging consistent with Apple guidance; avoid `print` in shipping paths.
+## Comments
+- **Doc comments (`///`)** on public-ish types and important methods: e.g. `BibleService`, `SignedOutBibleService`, `MockBibleService`, `PreviewPersistence` in `BIBLE TODO/Services.swift`; `SupabaseConfig` in `BIBLE TODO/SupabaseConfig.swift`.
+- **Inline comments** explain non-obvious behavior (e.g. Supabase client URL host crash note in `SupabaseConfig.makeClient()`).
+- **Xcode file headers** appear in some targets (e.g. `BIBLE TODOUITests/BIBLE_TODOUITests.swift`, widget files under `StreakWidget/`).
+- Use `// MARK: - Section` to group code in large files, e.g. `BibleTodoRepository.swift`, `BibleTodoSupabaseModels.swift`.
+## Function Design
+- Large files concentrate domain logic (e.g. `BibleTodoRepository.swift`); prefer **MARK** boundaries and extracted private helpers over monolithic unbroken blocks.
+- Prefer **explicit labels** for domain concepts: `userId`, `userTaskId`, `assignedDateISO`, `completed`.
+- **Tuple returns** used for bootstrap results, e.g. `(LaunchDestination, UUID?, ProfileRow?)` in `resolveAppLaunchState()`.
+- **Optionals** for cache misses and missing rows; **throws** for hard failures (no verse, invalid configuration).
+## Module Design
+- Types are **internal by default** at file level; no heavy use of `public` in the app target (single app module).
+- **`BibleService`** abstracts data loading; production uses **`SupabaseBibleService`**, offline/unauth uses **`SignedOutBibleService`**, tests/previews use **`MockBibleService`** (`BIBLE TODO/Services.swift`, `BIBLE TODO/SupabaseBibleService.swift`).
+- **`AppPersistence`** abstracts settings; **`UserDefaultsPersistence`** is production, **`PreviewPersistence`** is for SwiftUI previews (`BIBLE TODO/Services.swift`).
+- Root app injects **`AppState`** via `@StateObject` and `.environmentObject` in `BIBLE TODO/BIBLE_TODOApp.swift` and `BIBLE TODO/ContentView.swift` pattern.
+- **`@MainActor`** on `AppState` and view models (`BIBLE TODO/AppState.swift`, `BIBLE TODO/ViewModels.swift`) keeps UI updates on the main actor.
+- **`BibleTodoRepository`** is `Sendable`; Supabase DTOs in `BibleTodoSupabaseModels.swift` use **`Sendable`** where appropriate for cross-actor use.
+<!-- gsd-conventions-end -->
+
+<!-- gsd-architecture-start source:ARCHITECTURE.md -->
+## Architecture
+
+## Pattern Overview
+- Root navigation is driven by `AppState.RootPhase` (configuration, auth, onboarding, main tabs).
+- View models (`HomeViewModel`, `JourneyViewModel`) depend on `BibleService` and `AppPersistence`, not on `SupabaseClient` directly.
+- Remote persistence uses Supabase PostgREST via `supabase-swift` (`BIBLE TODO.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` pins `supabase-swift` 2.43.1).
+- Local persistence mixes `UserDefaults` for settings/completion IDs (`UserDefaultsPersistence` in `BIBLE TODO/Services.swift`) and `UserDefaults.standard` inside `BIBLE TODO/BibleTodoRepository.swift` for per-user daily content cache keys.
+## Layers
+- Purpose: Bootstrap Supabase client, choose `BibleService` implementation, own session lifecycle and global UI preferences.
+- Location: `BIBLE TODO/BIBLE_TODOApp.swift`, `BIBLE TODO/AppState.swift`
+- Contains: `@main` app entry, `AppState` (`ObservableObject`), phase machine, auth methods, theme/background/widget toggles.
+- Depends on: `SupabaseConfig`, `BibleTodoRepository`, `BibleService` implementations, `AppPersistence`.
+- Used by: All views via `@EnvironmentObject var appState: AppState`.
+- Purpose: Render UI and bind to view models or `AppState`.
+- Location: `BIBLE TODO/*.swift` views (e.g. `BIBLE TODO/ContentView.swift`, `BIBLE TODO/HomeView.swift`, `BIBLE TODO/JourneyView.swift`, `BIBLE TODO/SettingsView.swift`, `BIBLE TODO/WelcomeAuthView.swift`, `BIBLE TODO/OnboardingFlowView.swift`), shared UI in `BIBLE TODO/Components.swift`, `BIBLE TODO/CalendarComponents.swift`, `BIBLE TODO/ShareableCardViews.swift`.
+- Contains: Feature screens, custom tab chrome in `ContentView`, navigation stacks.
+- Depends on: `AppState`, `HomeViewModel`, `JourneyViewModel`, models from `BIBLE TODO/Models.swift`.
+- Used by: `BIBLE_TODOApp` → `ContentView`.
+- Purpose: Screen-level async loading, UI-specific state (hold-to-complete, calendar expansion), and bridging to `AppState` for settings/sign-out.
+- Location: `BIBLE TODO/ViewModels.swift`, container `BIBLE TODO/TabViewModelsContainer.swift`
+- Contains: `HomeViewModel`, `JourneyViewModel`, `SettingsViewModel`; `TabViewModelsContainer` keeps home/journey models alive across tab switches.
+- Depends on: `BibleService`, `AppPersistence`, `AppState` (settings VM only).
+- Used by: Corresponding views; `AppState` creates `TabViewModelsContainer` when entering `.main`.
+- Purpose: Stable API for “today’s verse,” history, streak summary, and task sync without exposing Supabase types to views.
+- Location: `BIBLE TODO/Services.swift`
+- Contains: `BibleService`; `SignedOutBibleService` (throws `BibleTodoRepositoryError.notAuthenticated`); `MockBibleService` (previews/tests); `AppPersistence`; `UserDefaultsPersistence`; `PreviewPersistence`.
+- Depends on: Types in `BIBLE TODO/Models.swift`, errors in `BIBLE TODO/BibleTodoSupabaseModels.swift`.
+- Used by: `AppState`, view models, unit tests (`BIBLE TODOTests/BIBLE_TODOTests.swift`).
+- Purpose: Encapsulate PostgREST queries, streak updates, onboarding profile writes, and map rows to `DailyContentCache` / domain records.
+- Location: `BIBLE TODO/BibleTodoRepository.swift`, `BIBLE TODO/SupabaseBibleService.swift`, DTOs/errors `BIBLE TODO/BibleTodoSupabaseModels.swift`, date helpers `BIBLE TODO/BibleTodoDate.swift`, onboarding constants `BIBLE TODO/FirstOnboardingTask.swift`, category slugs `BIBLE TODO/BibleLifeCategory.swift`.
+- Contains: `BibleTodoRepository` (`Sendable`, owns `SupabaseClient`); `SupabaseBibleService` implements `BibleService` using `userId` + `category` + repository.
+- Depends on: `Supabase` package, JSON types for profiles, `user_tasks`, `verse_tasks`, `verses`, `user_streaks`.
+- Used by: `AppState` after sign-in (`useSupabaseService()`).
+- Purpose: Inject `SUPABASE_URL` and `SUPABASE_ANON_KEY` into the app bundle and validate client construction.
+- Location: `Config/AppConfig.xcconfig`, `Config/Secrets.example.xcconfig` (local `Secrets.xcconfig` is gitignored per example comments), `BIBLE TODO/Info.plist` (`$(SUPABASE_URL)` / `$(SUPABASE_ANON_KEY)`), `BIBLE TODO/SupabaseConfig.swift`
+- Contains: xcconfig layering; `SupabaseConfig.makeClient()` reads `Bundle.main` Info.plist keys; `AuthEmailNormalizer` for username→email mapping.
+- Purpose: Home Screen / Lock Screen widgets and (in `StreakWidget`) Control + Live Activity bundle entry.
+- Location: `StreakWidget/`, `VerseTaskWidget/`, `LockScreenIconWidget/`
+- Contains: `@main` widget bundles (`*Bundle.swift`), `TimelineProvider` types, SwiftUI entry views, `Assets.xcassets`, per-target `Info.plist`. `StreakWidget/StreakWidgetLiveActivity.swift` is an ActivityKit template. `AppIntent.swift` files provide WidgetKit/AppIntents scaffolding (e.g. `LockScreenIconWidget/AppIntent.swift`).
+- Depends on: WidgetKit, SwiftUI; **no** import of the main app module or Supabase in the current Swift sources.
+- Used by: iOS system at runtime as app extensions.
+- Purpose: Swift Testing against `@testable import BIBLE_TODO` for mock service and achievement logic.
+- Location: `BIBLE TODOTests/BIBLE_TODOTests.swift`, UI test harness `BIBLE TODOUITests/`.
+## Data Flow
+- Global: `AppState` as `StateObject` + `environmentObject`.
+- Tab-scoped: `TabViewModelsContainer` holds `HomeViewModel` and `JourneyViewModel` across tab changes (`BIBLE TODO/TabViewModelsContainer.swift`).
+- Local UI: `@State` in views (e.g. `ContentView` selected tab).
+- Previews: `AppStatePreviewRoot` + `PreviewPersistence` + `AppState(swiftUIPreviewPersistence:)` (`BIBLE TODO/ContentView.swift`, `BIBLE TODO/AppState.swift`).
+## Key Abstractions
+- Purpose: Feature-level API for verse/history/streaks and task sync.
+- Examples: `BIBLE TODO/Services.swift` (protocol), `BIBLE TODO/SupabaseBibleService.swift`, `SignedOutBibleService`, `MockBibleService`.
+- Pattern: Strategy selection in `AppState` based on auth.
+- Purpose: Persist theme, background, widget flag, onboarding flags, preferred name, and local completion ID set.
+- Examples: `UserDefaultsPersistence`, `PreviewPersistence` in `BIBLE TODO/Services.swift`.
+- Pattern: Protocol for testability and previews.
+- Purpose: Single place for Supabase table access and daily-cache serialization.
+- Examples: `BIBLE TODO/BibleTodoRepository.swift`.
+- Pattern: Thin data layer; maps PostgREST shapes to `DailyContentCache` and streak helpers.
+- Purpose: Bridge cached/remote rows to UI models.
+- Examples: `BIBLE TODO/BibleTodoSupabaseModels.swift` (struct), `extension DailyContentCache` in `BIBLE TODO/SupabaseBibleService.swift` (`toDailyRecord`).
+## Entry Points
+- Location: `BIBLE TODO/BIBLE_TODOApp.swift`
+- Triggers: iOS launches the `BIBLE TODO` target.
+- Responsibilities: Instantiate `AppState`, present `WindowGroup` with `ContentView` and `environmentObject`.
+- `StreakWidget/StreakWidgetBundle.swift` — `@main` exposes `StreakWidget`, `StreakWidgetControl`, `StreakWidgetLiveActivity`.
+- `VerseTaskWidget/VerseTaskWidgetBundle.swift` — registers verse/task widget.
+- `LockScreenIconWidget/LockScreenIconWidgetBundle.swift` — registers lock screen accessory widget.
+- Location: `BIBLE TODO.xcodeproj/project.pbxproj`
+- Native targets: `BIBLE TODO`, `BIBLE TODOTests`, `BIBLE TODOUITests`, `StreakWidgetExtension`, `VerseTaskWidgetExtension`, `LockScreenIconWidgetExtension`.
+## Error Handling
+- Typed errors: `BibleTodoRepositoryError` (`BIBLE TODO/BibleTodoSupabaseModels.swift`) conforms to `LocalizedError`.
+- Auth/configuration: `SignedOutBibleService` surfaces `notAuthenticated`; missing Supabase config yields `rootPhase == .configurationRequired` and a dedicated view in `BIBLE TODO/ContentView.swift`.
+- Launch bootstrap: `bootstrapSupabaseLaunch` falls back to `.needsAuth` on throw (`BIBLE TODO/AppState.swift`).
+## Cross-Cutting Concerns
+<!-- gsd-architecture-end -->
+
+<!-- gsd-skills-start source:skills/ -->
+## Project Skills
+
+No project skills found. Add skills to any of: `.cursor/skills/`, `.agents/skills/`, `.cursor/skills/`, or `.github/skills/` with a `SKILL.md` index file.
+<!-- gsd-skills-end -->
+
+<!-- gsd-workflow-start source:GSD defaults -->
+## GSD Workflow Enforcement
+
+Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+
+Use these entry points:
+- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
+- `/gsd-debug` for investigation and bug fixing
+- `/gsd-execute-phase` for planned phase work
+
+Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+<!-- gsd-workflow-end -->
+
+
+
+<!-- gsd-profile-start -->
+## Developer Profile
+
+> Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
+> This section is managed by `generate-claude-profile` -- do not edit manually.
+<!-- gsd-profile-end -->

@@ -91,8 +91,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | EVAL-05 | Phase 2 | Pending |
 | ACHV-01 | Phase 2 | Pending |
 | ACHV-02 | Phase 2 | Pending |
-| ACHV-03 | Phase 3 | Pending |
-| ACHV-04 | Phase 3 | Pending |
+| ACHV-03 | Phase 2 | Pending |
+| ACHV-04 | Phase 2 | Pending |
 | PRES-01 | Phase 3 | Pending |
 | PRES-02 | Phase 3 | Pending |
 | PRES-03 | Phase 3 | Pending |
@@ -109,4 +109,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-04-12*
-*Last updated: 2026-04-12 after initial definition*
+*Last updated: 2026-04-12 — roadmap: coarse 3-phase mapping (ACHV-03/04 folded into Phase 2 with repository/sync)*
