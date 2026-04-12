@@ -257,4 +257,7 @@ final class AppState: ObservableObject {
             rootPhase = .main
         }
     }
+
+    /// Shared by feature views that need `UserDefaults`-backed prefs without going through `BibleService`.
+    var appPersistence: AppPersistence { persistence }
 }
