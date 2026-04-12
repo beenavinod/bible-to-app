@@ -19,12 +19,15 @@ struct ContentView: View {
                 OnboardingFlowView()
                     .environmentObject(appState)
             case .main:
-                if appState.hasCompletedOnboarding {
-                    mainChrome
+                if appState.hasCompletedOnboarding, let tabs = appState.mainTabViewModels {
+                    mainChrome(tabs: tabs)
                         .id(appState.authSessionRevision)
-                } else {
+                } else if !appState.hasCompletedOnboarding {
                     OnboardingFlowView()
                         .environmentObject(appState)
+                } else {
+                    ProgressView("Loading…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
@@ -43,15 +46,15 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var mainChrome: some View {
+    private func mainChrome(tabs: TabViewModelsContainer) -> some View {
         ZStack(alignment: .bottom) {
             Group {
                 switch selectedTab {
                 case .home:
-                    HomeView(appState: appState)
+                    HomeView(viewModel: tabs.home)
                         .environmentObject(appState)
                 case .journey:
-                    JourneyView(appState: appState)
+                    JourneyView(viewModel: tabs.journey)
                         .environmentObject(appState)
                 case .settings:
                     SettingsView(appState: appState)

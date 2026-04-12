@@ -17,7 +17,8 @@ final class BibleTodoRepository: Sendable {
         case home
     }
 
-    func resolveAppLaunchState() async throws -> (LaunchDestination, UUID?) {
+    /// Returns launch destination, user id when signed in, and the profile row when loaded (avoids a duplicate profile fetch during bootstrap).
+    func resolveAppLaunchState() async throws -> (LaunchDestination, UUID?, ProfileRow?) {
         do {
             let session = try await client.auth.session
             let userId = session.user.id
@@ -29,9 +30,9 @@ final class BibleTodoRepository: Sendable {
                 .execute()
                 .value
             let dest: LaunchDestination = profile.onboardingCompleted ? .home : .onboarding
-            return (dest, userId)
+            return (dest, userId, profile)
         } catch {
-            return (.welcome, nil)
+            return (.welcome, nil, nil)
         }
     }
 

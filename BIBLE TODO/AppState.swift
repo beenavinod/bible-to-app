@@ -30,6 +30,9 @@ final class AppState: ObservableObject {
 
     @Published private(set) var profileCategory: String = BibleLifeCategory.defaultSlug
 
+    /// Shared tab view models so switching tabs does not recreate them or refetch on every visit.
+    @Published private(set) var mainTabViewModels: TabViewModelsContainer?
+
     let supabaseClient: SupabaseClient?
     private(set) var repository: BibleTodoRepository?
 
@@ -79,6 +82,7 @@ final class AppState: ObservableObject {
         hasCompletedOnboarding = true
         preferredName = persistence.preferredName()
         rootPhase = .main
+        mainTabViewModels = TabViewModelsContainer(service: service, persistence: persistence)
     }
 
     var palette: AppThemePalette {
@@ -93,7 +97,7 @@ final class AppState: ObservableObject {
             return
         }
         do {
-            let (dest, userId) = try await repository.resolveAppLaunchState()
+            let (dest, userId, profile) = try await repository.resolveAppLaunchState()
             switch dest {
             case .welcome:
                 rootPhase = .needsAuth
@@ -102,16 +106,15 @@ final class AppState: ObservableObject {
                     rootPhase = .needsAuth
                     return
                 }
-                await applySignedInUser(userId: userId)
+                await applySignedInUser(userId: userId, existingProfile: profile)
                 rootPhase = .onboarding
             case .home:
                 guard let userId else {
                     rootPhase = .needsAuth
                     return
                 }
-                await applySignedInUser(userId: userId)
-                hasCompletedOnboarding = true
-                persistence.setHasCompletedOnboarding(true)
+                await applySignedInUser(userId: userId, existingProfile: profile)
+                rebuildMainTabViewModels()
                 rootPhase = .main
             }
         } catch {
@@ -119,11 +122,16 @@ final class AppState: ObservableObject {
         }
     }
 
-    private func applySignedInUser(userId: UUID) async {
+    private func applySignedInUser(userId: UUID, existingProfile: ProfileRow? = nil) async {
         sessionUserId = userId
         guard let repository else { return }
         do {
-            let profile = try await repository.fetchProfile(userId: userId)
+            let profile: ProfileRow
+            if let existingProfile {
+                profile = existingProfile
+            } else {
+                profile = try await repository.fetchProfile(userId: userId)
+            }
             profileCategory = BibleLifeCategory.resolvedSlug(stored: profile.onboardingData.category)
             hasCompletedOnboarding = profile.onboardingCompleted
             preferredName = profile.onboardingData.displayName ?? preferredName
@@ -135,6 +143,10 @@ final class AppState: ObservableObject {
             profileCategory = BibleLifeCategory.defaultSlug
         }
         useSupabaseService()
+    }
+
+    private func rebuildMainTabViewModels() {
+        mainTabViewModels = TabViewModelsContainer(service: service, persistence: persistence)
     }
 
     private func useSupabaseService() {
@@ -173,12 +185,12 @@ final class AppState: ObservableObject {
         }
         let session = try await client.auth.session
         let userId = session.user.id
-        await applySignedInUser(userId: userId)
-
         let profile = try await repository.fetchProfile(userId: userId)
+        await applySignedInUser(userId: userId, existingProfile: profile)
         if profile.onboardingCompleted {
             hasCompletedOnboarding = true
             persistence.setHasCompletedOnboarding(true)
+            rebuildMainTabViewModels()
             rootPhase = .main
         } else {
             hasCompletedOnboarding = false
@@ -195,6 +207,7 @@ final class AppState: ObservableObject {
             repository?.clearDailyCache(userId: uid)
         }
         sessionUserId = nil
+        mainTabViewModels = nil
         service = SignedOutBibleService()
         authSessionRevision += 1
         hasCompletedOnboarding = persistence.hasCompletedOnboarding()
@@ -239,6 +252,7 @@ final class AppState: ObservableObject {
             repository.clearDailyCache(userId: userId)
         }
 
+        rebuildMainTabViewModels()
         if rootPhase == .onboarding {
             rootPhase = .main
         }

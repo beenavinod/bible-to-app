@@ -13,10 +13,17 @@ final class HomeViewModel: ObservableObject {
     private let persistence: AppPersistence
     private var historyCache: [DailyRecord] = []
     private var completionTask: Task<Void, Never>?
+    private var didLoadOnce = false
 
     init(service: BibleService, persistence: AppPersistence) {
         self.service = service
         self.persistence = persistence
+    }
+
+    func loadIfNeeded() async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load()
     }
 
     func load() async {
@@ -115,10 +122,17 @@ final class JourneyViewModel: ObservableObject {
 
     private let service: BibleService
     private let persistence: AppPersistence
+    private var didLoadOnce = false
 
     init(service: BibleService, persistence: AppPersistence) {
         self.service = service
         self.persistence = persistence
+    }
+
+    func loadIfNeeded() async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load()
     }
 
     var completedRecords: [DailyRecord] {

@@ -2,13 +2,11 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
-    @StateObject private var viewModel: HomeViewModel
+    @ObservedObject private var viewModel: HomeViewModel
     @State private var sharePayload: ShareDrawerPayload?
 
-    init(appState: AppState) {
-        _viewModel = StateObject(
-            wrappedValue: HomeViewModel(service: appState.service, persistence: UserDefaultsPersistence())
-        )
+    init(viewModel: HomeViewModel) {
+        _viewModel = ObservedObject(wrappedValue: viewModel)
     }
 
     var body: some View {
@@ -45,7 +43,7 @@ struct HomeView: View {
             }
         }
         .task {
-            await viewModel.load()
+            await viewModel.loadIfNeeded()
         }
         .sensoryFeedback(.success, trigger: viewModel.didCompleteTask)
         .sheet(item: $sharePayload) { payload in
@@ -133,6 +131,6 @@ struct HomeView: View {
 
 #Preview {
     AppStatePreviewRoot { appState in
-        HomeView(appState: appState)
+        HomeView(viewModel: appState.mainTabViewModels!.home)
     }
 }

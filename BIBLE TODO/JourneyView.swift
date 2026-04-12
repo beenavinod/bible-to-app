@@ -2,13 +2,11 @@ import SwiftUI
 
 struct JourneyView: View {
     @EnvironmentObject private var appState: AppState
-    @StateObject private var viewModel: JourneyViewModel
+    @ObservedObject private var viewModel: JourneyViewModel
     @State private var sharePayload: ShareDrawerPayload?
 
-    init(appState: AppState) {
-        _viewModel = StateObject(
-            wrappedValue: JourneyViewModel(service: appState.service, persistence: UserDefaultsPersistence())
-        )
+    init(viewModel: JourneyViewModel) {
+        _viewModel = ObservedObject(wrappedValue: viewModel)
     }
 
     var body: some View {
@@ -39,7 +37,7 @@ struct JourneyView: View {
             }
         }
         .task {
-            await viewModel.load()
+            await viewModel.loadIfNeeded()
         }
         .sheet(item: $sharePayload) { payload in
             ShareDrawerSheet(payload: payload, palette: appState.palette)
