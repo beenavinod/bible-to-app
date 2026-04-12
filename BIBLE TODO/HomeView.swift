@@ -4,6 +4,7 @@ struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var viewModel: HomeViewModel
     @State private var sharePayload: ShareDrawerPayload?
+    @State private var showBibleReader = false
 
     init(viewModel: HomeViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -23,6 +24,8 @@ struct HomeView: View {
                             showsBackButton: true,
                             onShareTap: shareAction
                         )
+
+                        bibleReaderEntry
 
                         if let record = viewModel.todayRecord {
                             verseCard(record: record)
@@ -51,6 +54,56 @@ struct HomeView: View {
                 .presentationDetents([.height(520), .large])
                 .presentationDragIndicator(.visible)
         }
+        .fullScreenCover(isPresented: $showBibleReader) {
+            BibleReaderView(
+                onDismiss: { showBibleReader = false },
+                persistence: appState.appPersistence,
+                appPalette: appState.palette
+            )
+        }
+    }
+
+    private var bibleReaderEntry: some View {
+        Button {
+            showBibleReader = true
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(appState.palette.card)
+                        .frame(width: 52, height: 52)
+                        .shadow(color: appState.palette.shadow, radius: 8, x: 0, y: 4)
+                    Image(systemName: "book.fill")
+                        .font(.title2)
+                        .foregroundStyle(appState.palette.accent)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Read the Bible")
+                        .font(.headline)
+                        .foregroundStyle(appState.palette.primaryText)
+                    Text("World English Bible · offline")
+                        .font(.caption)
+                        .foregroundStyle(appState.palette.secondaryText)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(appState.palette.secondaryText.opacity(0.8))
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(appState.palette.card.opacity(0.92))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(appState.palette.border.opacity(0.5), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var shareAction: (() -> Void)? {

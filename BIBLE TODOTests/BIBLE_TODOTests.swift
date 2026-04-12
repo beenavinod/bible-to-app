@@ -14,6 +14,20 @@ import Testing
     #expect(summary.totalCompletedDays > 0)
 }
 
+@Test func webBibleMergesDuplicateVerseNumbers() {
+    let rows = [
+        WEBBibleVerseRecord(n: 1, t: "First line."),
+        WEBBibleVerseRecord(n: 1, t: "Second line."),
+        WEBBibleVerseRecord(n: 2, t: "Next verse."),
+    ]
+    let merged = WEBBibleVerseRecord.mergedUniqueVerses(rows)
+    #expect(merged.count == 2)
+    #expect(merged[0].n == 1)
+    #expect(merged[0].t.contains("First line"))
+    #expect(merged[0].t.contains("Second line"))
+    #expect(merged[1].n == 2)
+}
+
 @Test func achievementsUnlockAgainstCurrentStreak() {
     let cross = Achievement.defaults[0]
     let church = Achievement.defaults[3]

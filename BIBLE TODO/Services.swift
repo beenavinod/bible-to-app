@@ -43,6 +43,16 @@ protocol AppPersistence {
     func setHasCompletedOnboarding(_ hasCompleted: Bool)
     func preferredName() -> String?
     func setPreferredName(_ name: String?)
+
+    /// WEB reader only (`BibleReaderTheme`).
+    func bibleReaderTheme() -> BibleReaderTheme
+    func setBibleReaderTheme(_ theme: BibleReaderTheme)
+    /// 0.85 … 1.45, default 1.0
+    func bibleReaderFontScale() -> Double
+    func setBibleReaderFontScale(_ value: Double)
+    /// Extra line spacing in points, 0 … 18, default 4
+    func bibleReaderLineSpacingExtra() -> Double
+    func setBibleReaderLineSpacingExtra(_ value: Double)
 }
 
 final class UserDefaultsPersistence: AppPersistence {
@@ -53,6 +63,9 @@ final class UserDefaultsPersistence: AppPersistence {
         static let widgetsEnabled = "widgetsEnabled"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let preferredName = "preferredName"
+        static let bibleReaderTheme = "bibleReaderTheme"
+        static let bibleReaderFontScale = "bibleReaderFontScale"
+        static let bibleReaderLineSpacingExtra = "bibleReaderLineSpacingExtra"
     }
 
     private let defaults: UserDefaults
@@ -123,6 +136,40 @@ final class UserDefaultsPersistence: AppPersistence {
 
     func setPreferredName(_ name: String?) {
         defaults.set(name, forKey: Key.preferredName)
+    }
+
+    func bibleReaderTheme() -> BibleReaderTheme {
+        guard
+            let raw = defaults.string(forKey: Key.bibleReaderTheme),
+            let theme = BibleReaderTheme(rawValue: raw)
+        else {
+            return .mist
+        }
+        return theme
+    }
+
+    func setBibleReaderTheme(_ theme: BibleReaderTheme) {
+        defaults.set(theme.rawValue, forKey: Key.bibleReaderTheme)
+    }
+
+    func bibleReaderFontScale() -> Double {
+        let v = defaults.double(forKey: Key.bibleReaderFontScale)
+        if v < 0.01 { return 1.0 }
+        return min(max(v, 0.85), 1.45)
+    }
+
+    func setBibleReaderFontScale(_ value: Double) {
+        defaults.set(min(max(value, 0.85), 1.45), forKey: Key.bibleReaderFontScale)
+    }
+
+    func bibleReaderLineSpacingExtra() -> Double {
+        let v = defaults.double(forKey: Key.bibleReaderLineSpacingExtra)
+        if defaults.object(forKey: Key.bibleReaderLineSpacingExtra) == nil { return 2 }
+        return min(max(v, 0), 18)
+    }
+
+    func setBibleReaderLineSpacingExtra(_ value: Double) {
+        defaults.set(min(max(value, 0), 18), forKey: Key.bibleReaderLineSpacingExtra)
     }
 }
 
@@ -225,4 +272,15 @@ final class PreviewPersistence: AppPersistence {
     func setHasCompletedOnboarding(_ hasCompleted: Bool) { onboardingDone = hasCompleted }
     func preferredName() -> String? { name }
     func setPreferredName(_ name: String?) { self.name = name }
+
+    private var bibleTheme: BibleReaderTheme = .mist
+    private var bibleFontScale: Double = 1.0
+    private var bibleLineExtra: Double = 2
+
+    func bibleReaderTheme() -> BibleReaderTheme { bibleTheme }
+    func setBibleReaderTheme(_ theme: BibleReaderTheme) { bibleTheme = theme }
+    func bibleReaderFontScale() -> Double { bibleFontScale }
+    func setBibleReaderFontScale(_ value: Double) { bibleFontScale = value }
+    func bibleReaderLineSpacingExtra() -> Double { bibleLineExtra }
+    func setBibleReaderLineSpacingExtra(_ value: Double) { bibleLineExtra = value }
 }
