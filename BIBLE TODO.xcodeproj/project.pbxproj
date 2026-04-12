@@ -16,6 +16,7 @@
 		39EA626C2F8A2BA200F37C9D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39EA622D2F8A1AC600F37C9D /* WidgetKit.framework */; };
 		39EA626D2F8A2BA200F37C9D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39EA622F2F8A1AC600F37C9D /* SwiftUI.framework */; };
 		39EA627E2F8A2BA300F37C9D /* LockScreenIconWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 39EA626B2F8A2BA200F37C9D /* LockScreenIconWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		39EA62852F90000300F37C9D /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 39EA62842F90000200F37C9D /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +82,8 @@
 		39EA622F2F8A1AC600F37C9D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		39EA624D2F8A216600F37C9D /* VerseTaskWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VerseTaskWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		39EA626B2F8A2BA200F37C9D /* LockScreenIconWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LockScreenIconWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		39EA62862F90001000F37C9D /* AppConfig.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppConfig.xcconfig; sourceTree = "<group>"; };
+		39EA62872F90001100F37C9D /* Secrets.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.example.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -164,6 +167,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				39EA62852F90000300F37C9D /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -214,6 +218,7 @@
 		39EA61DB2F80CFE500F37C9D = {
 			isa = PBXGroup;
 			children = (
+				39EA62882F90001200F37C9D /* Config */,
 				39EA61E62F80CFE600F37C9D /* BIBLE TODO */,
 				39EA61F82F80CFE800F37C9D /* BIBLE TODOTests */,
 				39EA62022F80CFE800F37C9D /* BIBLE TODOUITests */,
@@ -247,6 +252,15 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		39EA62882F90001200F37C9D /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				39EA62862F90001000F37C9D /* AppConfig.xcconfig */,
+				39EA62872F90001100F37C9D /* Secrets.example.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -271,6 +285,7 @@
 			);
 			name = "BIBLE TODO";
 			packageProductDependencies = (
+				39EA62842F90000200F37C9D /* Supabase */,
 			);
 			productName = "BIBLE TODO";
 			productReference = 39EA61E42F80CFE600F37C9D /* BIBLE TODO.app */;
@@ -429,6 +444,9 @@
 			);
 			mainGroup = 39EA61DB2F80CFE500F37C9D;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				39EA62832F90000100F37C9D /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 39EA61E52F80CFE600F37C9D /* Products */;
 			projectDirPath = "";
@@ -565,6 +583,7 @@
 /* Begin XCBuildConfiguration section */
 		39EA62092F80CFE800F37C9D /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 39EA62862F90001000F37C9D /* AppConfig.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -609,6 +628,7 @@
 		};
 		39EA620A2F80CFE800F37C9D /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 39EA62862F90001000F37C9D /* AppConfig.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1125,6 +1145,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		39EA62832F90000100F37C9D /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		39EA62842F90000200F37C9D /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 39EA62832F90000100F37C9D /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 39EA61DC2F80CFE500F37C9D /* Project object */;
 }

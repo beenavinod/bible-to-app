@@ -4,6 +4,30 @@ protocol BibleService {
     func fetchTodayVerse() async throws -> Verse
     func fetchHistory() async throws -> [DailyRecord]
     func fetchStreakSummary() async throws -> StreakSummary
+    /// Persists task completion via Supabase (`SupabaseBibleService`); throws when signed out.
+    func syncTaskCompletion(userTaskId: UUID, assignedDateISO: String, completed: Bool) async throws
+}
+
+/// Used before sign-in or when Supabase is unavailable. All data methods fail fast (no fake data).
+final class SignedOutBibleService: BibleService {
+    func fetchTodayVerse() async throws -> Verse {
+        throw BibleTodoRepositoryError.notAuthenticated
+    }
+
+    func fetchHistory() async throws -> [DailyRecord] {
+        throw BibleTodoRepositoryError.notAuthenticated
+    }
+
+    func fetchStreakSummary() async throws -> StreakSummary {
+        throw BibleTodoRepositoryError.notAuthenticated
+    }
+
+    func syncTaskCompletion(userTaskId: UUID, assignedDateISO: String, completed: Bool) async throws {
+        _ = userTaskId
+        _ = assignedDateISO
+        _ = completed
+        throw BibleTodoRepositoryError.notAuthenticated
+    }
 }
 
 protocol AppPersistence {
@@ -102,6 +126,7 @@ final class UserDefaultsPersistence: AppPersistence {
     }
 }
 
+/// Sample data for **unit tests** and **SwiftUI previews** only — not used in the shipping app target flow.
 final class MockBibleService: BibleService {
     private let calendar = Calendar.current
     private let records: [DailyRecord]
@@ -133,6 +158,12 @@ final class MockBibleService: BibleService {
             longestStreak: 21,
             totalCompletedDays: completedRecords.count
         )
+    }
+
+    func syncTaskCompletion(userTaskId: UUID, assignedDateISO: String, completed: Bool) async throws {
+        _ = userTaskId
+        _ = assignedDateISO
+        _ = completed
     }
 
     private static func makeRecords() -> [DailyRecord] {

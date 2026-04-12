@@ -1,32 +1,207 @@
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
+import Supabase
 
 @MainActor
 final class AppState: ObservableObject {
+    enum RootPhase: Equatable {
+        /// `SUPABASE_URL` / `SUPABASE_ANON_KEY` missing or empty (see `Config/Secrets.xcconfig`).
+        case configurationRequired
+        /// Resolving Supabase session.
+        case launching
+        /// Client OK; user must sign in.
+        case needsAuth
+        /// Authenticated; finish onboarding in app.
+        case onboarding
+        /// Main tabs (Supabase-backed after sign-in).
+        case main
+    }
+
+    @Published private(set) var rootPhase: RootPhase
+    @Published private(set) var service: BibleService
+    @Published private(set) var authSessionRevision = 0
+
     @Published private(set) var theme: AppTheme
     @Published private(set) var background: AppBackground
     @Published private(set) var widgetsEnabled: Bool
     @Published private(set) var hasCompletedOnboarding: Bool
     @Published private(set) var preferredName: String?
 
-    let service: BibleService
+    @Published private(set) var profileCategory: String = BibleLifeCategory.defaultSlug
+
+    let supabaseClient: SupabaseClient?
+    private(set) var repository: BibleTodoRepository?
+
+    private(set) var sessionUserId: UUID?
 
     private let persistence: AppPersistence
 
-    init(service: BibleService, persistence: AppPersistence) {
-        self.service = service
+    /// `true` when URL and anon key produced a `SupabaseClient`.
+    var isSupabaseConfigured: Bool { supabaseClient != nil }
+
+    /// Signed in with a valid session (data loads use `SupabaseBibleService`).
+    var isSupabaseSessionActive: Bool {
+        supabaseClient != nil && sessionUserId != nil
+    }
+
+    init(supabaseClient: SupabaseClient?, persistence: AppPersistence) {
+        self.supabaseClient = supabaseClient
         self.persistence = persistence
+        self.repository = supabaseClient.map { BibleTodoRepository(client: $0) }
+
         theme = persistence.selectedTheme()
         background = persistence.selectedBackground()
         widgetsEnabled = persistence.widgetsEnabled()
         hasCompletedOnboarding = persistence.hasCompletedOnboarding()
         preferredName = persistence.preferredName()
+
+        service = SignedOutBibleService()
+
+        if supabaseClient != nil {
+            rootPhase = .launching
+            Task { await bootstrapSupabaseLaunch() }
+        } else {
+            rootPhase = .configurationRequired
+        }
+    }
+
+    /// SwiftUI previews only — unlocks main UI with mock verse data (no Supabase).
+    init(swiftUIPreviewPersistence persistence: AppPersistence) {
+        self.persistence = persistence
+        self.supabaseClient = nil
+        self.repository = nil
+        self.service = MockBibleService()
+        self.sessionUserId = nil
+        theme = persistence.selectedTheme()
+        background = persistence.selectedBackground()
+        widgetsEnabled = persistence.widgetsEnabled()
+        hasCompletedOnboarding = true
+        preferredName = persistence.preferredName()
+        rootPhase = .main
     }
 
     var palette: AppThemePalette {
         theme.palette
     }
+
+    // MARK: - Bootstrap
+
+    private func bootstrapSupabaseLaunch() async {
+        guard let repository else {
+            rootPhase = .configurationRequired
+            return
+        }
+        do {
+            let (dest, userId) = try await repository.resolveAppLaunchState()
+            switch dest {
+            case .welcome:
+                rootPhase = .needsAuth
+            case .onboarding:
+                guard let userId else {
+                    rootPhase = .needsAuth
+                    return
+                }
+                await applySignedInUser(userId: userId)
+                rootPhase = .onboarding
+            case .home:
+                guard let userId else {
+                    rootPhase = .needsAuth
+                    return
+                }
+                await applySignedInUser(userId: userId)
+                hasCompletedOnboarding = true
+                persistence.setHasCompletedOnboarding(true)
+                rootPhase = .main
+            }
+        } catch {
+            rootPhase = .needsAuth
+        }
+    }
+
+    private func applySignedInUser(userId: UUID) async {
+        sessionUserId = userId
+        guard let repository else { return }
+        do {
+            let profile = try await repository.fetchProfile(userId: userId)
+            profileCategory = BibleLifeCategory.resolvedSlug(stored: profile.onboardingData.category)
+            hasCompletedOnboarding = profile.onboardingCompleted
+            preferredName = profile.onboardingData.displayName ?? preferredName
+            if profile.onboardingCompleted {
+                persistence.setHasCompletedOnboarding(true)
+                persistence.setPreferredName(profile.onboardingData.displayName)
+            }
+        } catch {
+            profileCategory = BibleLifeCategory.defaultSlug
+        }
+        useSupabaseService()
+    }
+
+    private func useSupabaseService() {
+        guard let userId = sessionUserId, let repository else {
+            service = SignedOutBibleService()
+            authSessionRevision += 1
+            return
+        }
+        service = SupabaseBibleService(
+            userId: userId,
+            category: BibleLifeCategory.resolvedSlug(stored: profileCategory),
+            repository: repository
+        )
+        authSessionRevision += 1
+    }
+
+    // MARK: - Auth
+
+    func signIn(username: String, password: String) async throws {
+        guard let client = supabaseClient else { throw BibleTodoRepositoryError.invalidConfiguration }
+        let email = AuthEmailNormalizer.authEmail(from: username)
+        try await client.auth.signIn(email: email, password: password)
+        try await finalizeSessionAfterAuth()
+    }
+
+    func signUp(username: String, password: String) async throws {
+        guard let client = supabaseClient else { throw BibleTodoRepositoryError.invalidConfiguration }
+        let email = AuthEmailNormalizer.authEmail(from: username)
+        _ = try await client.auth.signUp(email: email, password: password)
+        try await finalizeSessionAfterAuth()
+    }
+
+    private func finalizeSessionAfterAuth() async throws {
+        guard let client = supabaseClient, let repository else {
+            throw BibleTodoRepositoryError.invalidConfiguration
+        }
+        let session = try await client.auth.session
+        let userId = session.user.id
+        await applySignedInUser(userId: userId)
+
+        let profile = try await repository.fetchProfile(userId: userId)
+        if profile.onboardingCompleted {
+            hasCompletedOnboarding = true
+            persistence.setHasCompletedOnboarding(true)
+            rootPhase = .main
+        } else {
+            hasCompletedOnboarding = false
+            persistence.setHasCompletedOnboarding(false)
+            rootPhase = .onboarding
+        }
+    }
+
+    func signOut() async {
+        if let client = supabaseClient {
+            try? await client.auth.signOut()
+        }
+        if let uid = sessionUserId {
+            repository?.clearDailyCache(userId: uid)
+        }
+        sessionUserId = nil
+        service = SignedOutBibleService()
+        authSessionRevision += 1
+        hasCompletedOnboarding = persistence.hasCompletedOnboarding()
+        rootPhase = supabaseClient != nil ? .needsAuth : .configurationRequired
+    }
+
+    // MARK: - Settings / theme
 
     func setTheme(_ theme: AppTheme) {
         self.theme = theme
@@ -43,11 +218,29 @@ final class AppState: ObservableObject {
         persistence.setWidgetsEnabled(isEnabled)
     }
 
-    func completeOnboarding(name: String) {
+    /// Persists onboarding, records the canonical first task as completed for today, then enters main.
+    func completeOnboarding(name: String) async {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         preferredName = trimmedName.isEmpty ? nil : trimmedName
         hasCompletedOnboarding = true
         persistence.setPreferredName(preferredName)
         persistence.setHasCompletedOnboarding(true)
+
+        if let userId = sessionUserId, let repository {
+            let display = preferredName ?? "Friend"
+            let payload = OnboardingRemotePayload(
+                display_name: display,
+                date_of_birth: "2000-01-01",
+                gender: "prefer-not-to-say",
+                category: BibleLifeCategory.resolvedSlug(stored: profileCategory)
+            )
+            try? await repository.completeOnboarding(userId: userId, payload: payload)
+            try? await repository.recordCanonicalFirstOnboardingTaskCompleted(userId: userId)
+            repository.clearDailyCache(userId: userId)
+        }
+
+        if rootPhase == .onboarding {
+            rootPhase = .main
+        }
     }
 }

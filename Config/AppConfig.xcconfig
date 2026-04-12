@@ -1,0 +1,13 @@
+// Base app configuration. Supabase credentials are optional overrides from Secrets.xcconfig.
+//
+// Setup:
+// 1. Copy Secrets.example.xcconfig to Secrets.xcconfig (same folder).
+// 2. Replace placeholders with your project URL and anon key (Dashboard → Settings → API).
+//
+// IMPORTANT: Quote URLs in xcconfig — unquoted https://... is truncated at // (comment syntax).
+//
+// If Secrets.xcconfig is missing or values are empty, the app runs in offline mock mode.
+
+SUPABASE_URL =
+SUPABASE_ANON_KEY =
+#include? "Secrets.xcconfig"

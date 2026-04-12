@@ -20,6 +20,7 @@ struct SettingsView: View {
                         widgetCard
                         themeCard
                         backgroundCard
+                        accountCard
                         placeholderCard
                     }
                     .padding(.horizontal, 20)
@@ -124,6 +125,35 @@ struct SettingsView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var accountCard: some View {
+        CardContainer(palette: appState.palette) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Account")
+                    .font(.headline)
+                    .foregroundStyle(appState.palette.primaryText)
+
+                if appState.isSupabaseSessionActive {
+                    Button {
+                        Task { await viewModel.signOut() }
+                    } label: {
+                        Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                            .foregroundStyle(appState.palette.primaryText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                } else if appState.isSupabaseConfigured {
+                    Text("Sign in from the welcome screen to sync your progress.")
+                        .font(.subheadline)
+                        .foregroundStyle(appState.palette.secondaryText)
+                } else {
+                    Text("Configure Config/Secrets.xcconfig with your Supabase URL and anon key, then rebuild.")
+                        .font(.subheadline)
+                        .foregroundStyle(appState.palette.secondaryText)
                 }
             }
         }

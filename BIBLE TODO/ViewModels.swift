@@ -83,6 +83,15 @@ final class HomeViewModel: ObservableObject {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
             holdProgress = 1
         }
+
+        let dateISO = BibleTodoDate.formatLocalDay(record.verse.date)
+        Task {
+            try? await service.syncTaskCompletion(
+                userTaskId: record.id,
+                assignedDateISO: dateISO,
+                completed: true
+            )
+        }
     }
 
     private func updateCompletedState(for id: UUID) {
@@ -211,5 +220,9 @@ final class SettingsViewModel: ObservableObject {
     func setWidgetsEnabled(_ isEnabled: Bool) {
         widgetsEnabled = isEnabled
         appState.setWidgetsEnabled(isEnabled)
+    }
+
+    func signOut() async {
+        await appState.signOut()
     }
 }

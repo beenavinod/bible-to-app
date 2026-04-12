@@ -32,7 +32,7 @@ struct HomeView: View {
                         } else {
                             EmptyStateView(
                                 title: "Unable to load today’s verse",
-                                subtitle: "Try again in a moment. The mock service can be swapped for a live API later.",
+                                subtitle: "Check your network, confirm Supabase URL and key in Info.plist, and try again.",
                                 palette: appState.palette
                             )
                         }

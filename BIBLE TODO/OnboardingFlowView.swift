@@ -526,21 +526,19 @@ struct OnboardingFlowView: View {
                 footer: nil,
                 buttonTitle: "Start My First Task"
             )
-        case 27: // Day 1 first task
+        case 27: // Day 1 first task (canonical: same DB task all users get as completed after onboarding)
             messageScreen(
                 stepKey: step,
                 eyebrow: nil,
-                title: "Pause Before You Respond",
+                title: FirstOnboardingTask.taskTitle,
                 subtitle: nil,
                 card: {
                     OnboardingTaskPreviewCard(
-                        verse: "\"Be quick to listen, slow to speak…\"",
-                        reference: "James 1:19",
+                        verse: FirstOnboardingTask.verseQuote,
+                        reference: FirstOnboardingTask.verseReference,
                         bulletTitle: "Task:",
                         bullets: [
-                            "Pause before responding",
-                            "Listen fully",
-                            "Respond calmly"
+                            FirstOnboardingTask.taskDescription
                         ],
                         palette: appState.palette
                     )
@@ -595,8 +593,8 @@ struct OnboardingFlowView: View {
 
     private func advance() {
         if currentStep >= totalSteps - 1 {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
-                appState.completeOnboarding(name: displayName)
+            Task { @MainActor in
+                await appState.completeOnboarding(name: displayName)
             }
         } else {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
@@ -610,7 +608,7 @@ struct OnboardingFlowView: View {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(260))
             if completesFlow {
-                appState.completeOnboarding(name: displayName)
+                await appState.completeOnboarding(name: displayName)
             } else {
                 advance()
             }
@@ -1345,6 +1343,8 @@ private struct OnboardingSplashScreen: View {
 }
 
 private struct OnboardingAuthScreen: View {
+    @EnvironmentObject private var appState: AppState
+
     let stepKey: Int
     let palette: AppThemePalette
     let onContinue: () -> Void
@@ -1352,67 +1352,61 @@ private struct OnboardingAuthScreen: View {
     @State private var showContent = false
 
     var body: some View {
-        VStack(spacing: 26) {
-            Spacer()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 24) {
+                Spacer(minLength: 12)
 
-            VStack(spacing: 10) {
-                Text("Save my journey")
-                    .font(.system(.largeTitle, design: .serif, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
+                VStack(spacing: 10) {
+                    Text("Save my journey")
+                        .font(.system(.largeTitle, design: .serif, weight: .semibold))
+                        .foregroundStyle(palette.primaryText)
+                        .multilineTextAlignment(.center)
 
-                Text("Sign up to keep your progress safe")
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(palette.secondaryText)
+                    if appState.isSupabaseSessionActive {
+                        Text("You’re signed in. Your progress will be saved to this account when you finish onboarding.")
+                            .font(.title3.weight(.medium))
+                            .foregroundStyle(palette.secondaryText)
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text("Sign in with your username or email and password. If you use a username only, we create a private sign-in email for your account.")
+                            .font(.subheadline)
+                            .foregroundStyle(palette.secondaryText)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .opacity(showContent ? 1 : 0)
+
+                if appState.isSupabaseSessionActive {
+                    Button {
+                        onContinue()
+                    } label: {
+                        Text("Continue")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(palette.headerAccent)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(showContent ? 1 : 0)
+                    .padding(.top, 8)
+                } else {
+                    EmailPasswordAuthForm(appState: appState, palette: palette, onSuccess: onContinue)
+                        .opacity(showContent ? 1 : 0)
+                }
+
+                Spacer(minLength: 24)
             }
-            .opacity(showContent ? 1 : 0)
-
-            VStack(spacing: 14) {
-                authButton(title: "Apple", symbol: "apple.logo")
-                authButton(title: "Google", symbol: "g.circle.fill")
-                authButton(title: "Email", symbol: "envelope.fill")
-            }
-            .opacity(showContent ? 1 : 0)
-            .offset(y: showContent ? 0 : 22)
-
-            Button("skip for now") {
-                onContinue()
-            }
-            .font(.headline)
-            .foregroundStyle(palette.secondaryText)
-            .opacity(showContent ? 1 : 0)
-
-            Spacer()
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
         }
-        .padding(.horizontal, 24)
         .task(id: stepKey) {
             showContent = false
             withAnimation(.easeOut(duration: 0.42)) {
                 showContent = true
             }
         }
-    }
-
-    private func authButton(title: String, symbol: String) -> some View {
-        Button(action: onContinue) {
-            HStack(spacing: 12) {
-                Image(systemName: symbol)
-                    .font(.title3.weight(.semibold))
-                Text(title)
-                    .font(.title3.weight(.medium))
-                Spacer()
-            }
-            .foregroundStyle(palette.primaryText)
-            .padding(.horizontal, 20)
-            .frame(height: 58)
-            .background(palette.card)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(palette.border.opacity(0.72), lineWidth: 1.1)
-            )
-            .shadow(color: palette.shadow.opacity(0.4), radius: 14, x: 0, y: 8)
-        }
-        .buttonStyle(.plain)
     }
 }
 

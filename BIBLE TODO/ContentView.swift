@@ -6,27 +6,62 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if appState.hasCompletedOnboarding {
-                ZStack(alignment: .bottom) {
-                    Group {
-                        switch selectedTab {
-                        case .home:
-                            HomeView(appState: appState)
-                        case .journey:
-                            JourneyView(appState: appState)
-                        case .settings:
-                            SettingsView(appState: appState)
-                        }
-                    }
-
-                    customTabBar
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 18)
-                }
-            } else {
+            switch appState.rootPhase {
+            case .configurationRequired:
+                configurationRequiredView
+            case .launching:
+                ProgressView("Loading…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .needsAuth:
+                WelcomeAuthView()
+                    .environmentObject(appState)
+            case .onboarding:
                 OnboardingFlowView()
                     .environmentObject(appState)
+            case .main:
+                if appState.hasCompletedOnboarding {
+                    mainChrome
+                        .id(appState.authSessionRevision)
+                } else {
+                    OnboardingFlowView()
+                        .environmentObject(appState)
+                }
             }
+        }
+    }
+
+    private var configurationRequiredView: some View {
+        VStack(spacing: 16) {
+            Text("Supabase not configured")
+                .font(.title2.weight(.semibold))
+            Text("Add your project URL and anon key to Config/Secrets.xcconfig (copy from Secrets.example.xcconfig), then rebuild.")
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var mainChrome: some View {
+        ZStack(alignment: .bottom) {
+            Group {
+                switch selectedTab {
+                case .home:
+                    HomeView(appState: appState)
+                        .environmentObject(appState)
+                case .journey:
+                    JourneyView(appState: appState)
+                        .environmentObject(appState)
+                case .settings:
+                    SettingsView(appState: appState)
+                        .environmentObject(appState)
+                }
+            }
+
+            customTabBar
+                .padding(.horizontal, 20)
+                .padding(.bottom, 18)
         }
     }
 
@@ -84,10 +119,7 @@ struct ContentView: View {
 
 /// Single `AppState` instance for previews so `StateObject` / `EnvironmentObject` stay in sync.
 struct AppStatePreviewRoot<Content: View>: View {
-    @StateObject private var appState = AppState(
-        service: MockBibleService(),
-        persistence: PreviewPersistence()
-    )
+    @StateObject private var appState = AppState(swiftUIPreviewPersistence: PreviewPersistence())
     @ViewBuilder private let content: (AppState) -> Content
 
     init(@ViewBuilder content: @escaping (AppState) -> Content) {

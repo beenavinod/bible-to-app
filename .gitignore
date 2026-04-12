@@ -1,0 +1,2 @@
+# Local Supabase credentials (copy from Secrets.example.xcconfig)
+Config/Secrets.xcconfig
