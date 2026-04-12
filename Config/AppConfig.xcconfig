@@ -4,7 +4,7 @@
 // 1. Copy Secrets.example.xcconfig to Secrets.xcconfig (same folder).
 // 2. Replace placeholders with your project URL and anon key (Dashboard → Settings → API).
 //
-// IMPORTANT: Quote URLs in xcconfig — unquoted https://... is truncated at // (comment syntax).
+// IMPORTANT: Use the $() trick to escape // in URLs: https:$()/$()/example.supabase.co
 //
 // If Secrets.xcconfig is missing or values are empty, the app runs in offline mock mode.
 
