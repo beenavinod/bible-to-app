@@ -10,8 +10,7 @@ struct ContentView: View {
             case .configurationRequired:
                 configurationRequiredView
             case .launching:
-                ProgressView("Loading…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                launchSplash
             case .needsAuth:
                 WelcomeAuthView()
                     .environmentObject(appState)
@@ -26,9 +25,27 @@ struct ContentView: View {
                     OnboardingFlowView()
                         .environmentObject(appState)
                 } else {
-                    ProgressView("Loading…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    launchSplash
                 }
+            }
+        }
+    }
+
+    private var launchSplash: some View {
+        ZStack {
+            Color("LaunchBackground")
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                Image("LaunchLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 120, height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+
+                Text("Bible Life")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.34, green: 0.30, blue: 0.24))
             }
         }
     }
