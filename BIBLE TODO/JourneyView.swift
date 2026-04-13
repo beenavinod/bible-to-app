@@ -10,30 +10,32 @@ struct JourneyView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppBackgroundView(background: appState.background)
+        ZStack {
+            AppBackgroundView(background: appState.background)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        TopBar(
-                            title: "Journey History",
-                            subtitle: nil,
-                            palette: appState.palette,
-                            onShareTap: {
-                                sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
-                            }
-                        )
-
-                        streakCard
-                        calendarCard
-                        achievementsCard
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 110)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    streakCard
+                    calendarCard
+                    achievementsCard
                 }
-                .safeAreaPadding(.top, 12)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
+            }
+            .safeAreaPadding(.top, 12)
+        }
+        .navigationTitle("Journey History")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundStyle(appState.palette.primaryText)
+                }
+                .accessibilityLabel("Share")
             }
         }
         .task {

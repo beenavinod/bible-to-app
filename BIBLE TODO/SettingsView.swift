@@ -3,31 +3,82 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: SettingsViewModel
+    @State private var showHomeBackgroundPicker = false
 
     init(appState: AppState) {
         _viewModel = StateObject(wrappedValue: SettingsViewModel(appState: appState))
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppBackgroundView(background: appState.background)
+        ZStack {
+            AppBackgroundView(background: appState.background)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        TopBar(title: "Settings", subtitle: "Customize Bible Life", palette: appState.palette)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    Text("Customize Bible Life")
+                        .font(.subheadline)
+                        .foregroundStyle(appState.palette.secondaryText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                        widgetCard
-                        themeCard
-                        backgroundCard
-                        accountCard
-                        placeholderCard
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 110)
+                    widgetCard
+                    themeCard
+                    homeBackgroundRow
+                    backgroundCard
+                    accountCard
+                    placeholderCard
                 }
-                .safeAreaPadding(.top, 12)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
+            }
+            .safeAreaPadding(.top, 12)
+        }
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showHomeBackgroundPicker) {
+            HomeBackgroundPickerSheet()
+                .environmentObject(appState)
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var homeBackgroundRow: some View {
+        CardContainer(palette: appState.palette) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Home")
+                    .font(.headline)
+                    .foregroundStyle(appState.palette.primaryText)
+
+                Button {
+                    showHomeBackgroundPicker = true
+                } label: {
+                    HStack {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.title3)
+                            .foregroundStyle(appState.palette.accent)
+                            .frame(width: 44, height: 44)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(appState.palette.canvas.opacity(0.9))
+                            )
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Home background")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(appState.palette.primaryText)
+                            Text("Wallpaper for the Today tab only.")
+                                .font(.subheadline)
+                                .foregroundStyle(appState.palette.secondaryText)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(appState.palette.secondaryText.opacity(0.8))
+                    }
+                }
+                .buttonStyle(.plain)
             }
         }
     }

@@ -37,6 +37,8 @@ protocol AppPersistence {
     func setSelectedTheme(_ theme: AppTheme)
     func selectedBackground() -> AppBackground
     func setSelectedBackground(_ background: AppBackground)
+    func selectedHomeWallpaper() -> HomeWallpaper
+    func setSelectedHomeWallpaper(_ wallpaper: HomeWallpaper)
     func widgetsEnabled() -> Bool
     func setWidgetsEnabled(_ isEnabled: Bool)
     func hasCompletedOnboarding() -> Bool
@@ -60,6 +62,7 @@ final class UserDefaultsPersistence: AppPersistence {
         static let completedIDs = "completedRecordIDs"
         static let selectedTheme = "selectedTheme"
         static let selectedBackground = "selectedBackground"
+        static let selectedHomeWallpaper = "selectedHomeWallpaper"
         static let widgetsEnabled = "widgetsEnabled"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let preferredName = "preferredName"
@@ -109,6 +112,20 @@ final class UserDefaultsPersistence: AppPersistence {
 
     func setSelectedBackground(_ background: AppBackground) {
         defaults.set(background.rawValue, forKey: Key.selectedBackground)
+    }
+
+    func selectedHomeWallpaper() -> HomeWallpaper {
+        guard
+            let raw = defaults.string(forKey: Key.selectedHomeWallpaper),
+            let wallpaper = HomeWallpaper(rawValue: raw)
+        else {
+            return .defaultWallpaper
+        }
+        return wallpaper
+    }
+
+    func setSelectedHomeWallpaper(_ wallpaper: HomeWallpaper) {
+        defaults.set(wallpaper.rawValue, forKey: Key.selectedHomeWallpaper)
     }
 
     func widgetsEnabled() -> Bool {
@@ -256,6 +273,7 @@ final class PreviewPersistence: AppPersistence {
     private var completedIDs: Set<UUID> = []
     private var theme: AppTheme = .oliveMist
     private var background: AppBackground = .plain
+    private var homeWallpaper: HomeWallpaper = .defaultWallpaper
     private var widgets: Bool = true
     private var onboardingDone: Bool = false
     private var name: String? = "Beena"
@@ -266,6 +284,8 @@ final class PreviewPersistence: AppPersistence {
     func setSelectedTheme(_ theme: AppTheme) { self.theme = theme }
     func selectedBackground() -> AppBackground { background }
     func setSelectedBackground(_ background: AppBackground) { self.background = background }
+    func selectedHomeWallpaper() -> HomeWallpaper { homeWallpaper }
+    func setSelectedHomeWallpaper(_ wallpaper: HomeWallpaper) { homeWallpaper = wallpaper }
     func widgetsEnabled() -> Bool { widgets }
     func setWidgetsEnabled(_ isEnabled: Bool) { widgets = isEnabled }
     func hasCompletedOnboarding() -> Bool { onboardingDone }

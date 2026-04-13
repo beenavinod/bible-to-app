@@ -84,6 +84,83 @@ enum AppBackground: String, CaseIterable, Codable {
     }
 }
 
+/// Full-bleed wallpapers for the Home tab only (`Assets.xcassets` `HomeWallpaper01` … `09`).
+enum HomeWallpaper: String, CaseIterable, Codable {
+    case w1
+    case w2
+    case w3
+    case w4
+    case w5
+    case w6
+    case w7
+    case w8
+    case w9
+
+    static let defaultWallpaper = HomeWallpaper.w1
+
+    var assetName: String {
+        switch self {
+        case .w1: "HomeWallpaper01"
+        case .w2: "HomeWallpaper02"
+        case .w3: "HomeWallpaper03"
+        case .w4: "HomeWallpaper04"
+        case .w5: "HomeWallpaper05"
+        case .w6: "HomeWallpaper06"
+        case .w7: "HomeWallpaper07"
+        case .w8: "HomeWallpaper08"
+        case .w9: "HomeWallpaper09"
+        }
+    }
+
+    /// Text / chrome on the Home screen (independent of `AppTheme` palette).
+    var homeForeground: HomeForegroundStyle {
+        switch self {
+        case .w1, .w2, .w3, .w4, .w6:
+            HomeForegroundStyle(
+                primary: Color(red: 0.08, green: 0.07, blue: 0.06),
+                secondary: Color(red: 0.08, green: 0.07, blue: 0.06).opacity(0.78),
+                tertiary: Color(red: 0.08, green: 0.07, blue: 0.06).opacity(0.52),
+                glassStroke: Color.black.opacity(0.12),
+                legibilityShadow: Color.white.opacity(0.9),
+                iconBackdrop: Color.white.opacity(0.58),
+                taskCardFill: Color.white.opacity(0.82),
+                taskHoldTrackFill: Color.black.opacity(0.07),
+                taskCardShadow: Color.black.opacity(0.18),
+                prefersLightStatusBar: false
+            )
+        case .w5, .w7, .w8, .w9:
+            HomeForegroundStyle(
+                primary: .white,
+                secondary: Color.white.opacity(0.88),
+                tertiary: Color.white.opacity(0.62),
+                glassStroke: Color.white.opacity(0.4),
+                legibilityShadow: Color.black.opacity(0.65),
+                iconBackdrop: Color.white.opacity(0.22),
+                taskCardFill: Color.white.opacity(0.16),
+                taskHoldTrackFill: Color.white.opacity(0.22),
+                taskCardShadow: Color.black.opacity(0.45),
+                prefersLightStatusBar: true
+            )
+        }
+    }
+}
+
+struct HomeForegroundStyle {
+    let primary: Color
+    let secondary: Color
+    let tertiary: Color
+    let glassStroke: Color
+    /// Halo behind glyphs on top of photography (improves contrast without a text box).
+    let legibilityShadow: Color
+    /// Squircle fill behind toolbar icons (not `Material`, so it doesn’t follow system appearance).
+    let iconBackdrop: Color
+    /// Task card tint (follows wallpaper contrast group).
+    let taskCardFill: Color
+    let taskHoldTrackFill: Color
+    let taskCardShadow: Color
+    let prefersLightStatusBar: Bool
+}
+
 enum ColorToken: String, Codable, CaseIterable {
     case canvas
     case card

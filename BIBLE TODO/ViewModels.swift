@@ -4,14 +4,19 @@ import SwiftUI
 
 @MainActor
 final class HomeViewModel: ObservableObject {
-    @Published private(set) var todayRecord: DailyRecord?
+    @Published private(set) var displayedRecord: DailyRecord?
+    @Published private(set) var focusedDayIndex: Int = 0
     @Published var holdProgress: Double = 0
     @Published private(set) var isCompleting = false
     @Published private(set) var didCompleteTask = false
+    @Published private(set) var canGoToOlderDay = false
+    @Published private(set) var canGoToNewerDay = false
 
     private let service: BibleService
     private let persistence: AppPersistence
     private var historyCache: [DailyRecord] = []
+    private var recordsByDay: [Date: DailyRecord] = [:]
+    private var orderedDayStarts: [Date] = []
     private var completionTask: Task<Void, Never>?
     private var didLoadOnce = false
 
@@ -19,6 +24,8 @@ final class HomeViewModel: ObservableObject {
         self.service = service
         self.persistence = persistence
     }
+
+    var isViewingToday: Bool { focusedDayIndex == 0 }
 
     func loadIfNeeded() async {
         guard !didLoadOnce else { return }
@@ -32,19 +39,47 @@ final class HomeViewModel: ObservableObject {
             async let history = service.fetchHistory()
             let verse = try await todayVerse
             historyCache = try await history
-
-            if let matched = historyCache.first(where: { Calendar.current.isDate($0.verse.date, inSameDayAs: verse.date) }) {
-                todayRecord = applyCompletionState(to: matched)
-            } else {
-                todayRecord = DailyRecord(id: UUID(), verse: verse, completed: false)
-            }
+            rebuildDayMap(todayVerse: verse)
+            focusedDayIndex = min(focusedDayIndex, max(0, orderedDayStarts.count - 1))
+            applyDisplayedRecord()
+            updateNavigationFlags()
         } catch {
-            todayRecord = nil
+            recordsByDay = [:]
+            orderedDayStarts = []
+            displayedRecord = nil
+            canGoToOlderDay = false
+            canGoToNewerDay = false
         }
     }
 
+    func goToOlderDay() {
+        guard canGoToOlderDay else { return }
+        cancelHold()
+        holdProgress = 0
+        focusedDayIndex += 1
+        applyDisplayedRecord()
+        updateNavigationFlags()
+    }
+
+    func goToNewerDay() {
+        guard canGoToNewerDay else { return }
+        cancelHold()
+        holdProgress = 0
+        focusedDayIndex -= 1
+        applyDisplayedRecord()
+        updateNavigationFlags()
+    }
+
+    func goToToday() {
+        cancelHold()
+        holdProgress = 0
+        focusedDayIndex = 0
+        applyDisplayedRecord()
+        updateNavigationFlags()
+    }
+
     func startHold() {
-        guard !isCompleting, todayRecord?.completed == false else { return }
+        guard isViewingToday, let record = displayedRecord, !record.completed, !isCompleting else { return }
 
         completionTask?.cancel()
         isCompleting = true
@@ -75,15 +110,52 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    private func rebuildDayMap(todayVerse: Verse) {
+        let cal = Calendar.current
+        var map: [Date: DailyRecord] = [:]
+        for r in historyCache {
+            let d = cal.startOfDay(for: r.verse.date)
+            map[d] = applyCompletionState(to: r)
+        }
+        let todayStart = cal.startOfDay(for: todayVerse.date)
+        if let matched = historyCache.first(where: { cal.isDate($0.verse.date, inSameDayAs: todayVerse.date) }) {
+            map[todayStart] = applyCompletionState(to: matched)
+        } else {
+            let synthetic = DailyRecord(id: UUID(), verse: todayVerse, completed: false)
+            map[todayStart] = applyCompletionState(to: synthetic)
+        }
+        recordsByDay = map
+        orderedDayStarts = map.keys.sorted(by: >)
+    }
+
+    private func applyDisplayedRecord() {
+        guard focusedDayIndex < orderedDayStarts.count else {
+            displayedRecord = nil
+            return
+        }
+        let key = orderedDayStarts[focusedDayIndex]
+        displayedRecord = recordsByDay[key]
+    }
+
+    private func updateNavigationFlags() {
+        canGoToOlderDay = focusedDayIndex + 1 < orderedDayStarts.count
+        canGoToNewerDay = focusedDayIndex > 0
+    }
+
     private func completeTodayTask() {
         completionTask?.cancel()
         completionTask = nil
 
-        guard let record = todayRecord else { return }
+        guard let record = displayedRecord, isViewingToday else { return }
         let completedRecord = DailyRecord(id: record.id, verse: record.verse, completed: true)
 
         updateCompletedState(for: completedRecord.id)
-        todayRecord = completedRecord
+
+        let cal = Calendar.current
+        let dayStart = cal.startOfDay(for: record.verse.date)
+        recordsByDay[dayStart] = completedRecord
+        displayedRecord = completedRecord
+
         isCompleting = false
         didCompleteTask.toggle()
 
