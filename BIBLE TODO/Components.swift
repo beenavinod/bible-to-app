@@ -20,6 +20,17 @@ struct AppBackgroundView: View {
     }
 }
 
+struct HomeWallpaperBackgroundView: View {
+    let wallpaper: HomeWallpaper
+
+    var body: some View {
+        Image(wallpaper.assetName)
+            .resizable()
+            .scaledToFill()
+            .ignoresSafeArea()
+    }
+}
+
 struct CardContainer<Content: View>: View {
     let palette: AppThemePalette
     @ViewBuilder let content: Content
@@ -42,6 +53,8 @@ struct TopBar: View {
     let subtitle: String?
     let palette: AppThemePalette
     var showsBackButton = false
+    /// Opens the Home background picker (Home tab).
+    var onHomeBackgroundTap: (() -> Void)? = nil
     /// When set, shows a tappable share control that opens your share flow.
     var onShareTap: (() -> Void)? = nil
 
@@ -67,14 +80,26 @@ struct TopBar: View {
 
             Spacer()
 
-            if let onShareTap {
-                Button(action: onShareTap) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.headline)
-                        .foregroundStyle(palette.primaryText)
+            HStack(spacing: 14) {
+                if let onHomeBackgroundTap {
+                    Button(action: onHomeBackgroundTap) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.headline)
+                            .foregroundStyle(palette.primaryText)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Home background")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Share")
+
+                if let onShareTap {
+                    Button(action: onShareTap) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.headline)
+                            .foregroundStyle(palette.primaryText)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Share")
+                }
             }
         }
         .padding(.horizontal, 4)
@@ -118,6 +143,51 @@ struct HoldToCompleteButton: View {
                 .animation(.spring(response: 0.35, dampingFraction: 0.75), value: isCompleted)
         }
         .contentShape(Circle())
+        .gesture(gesture)
+        .accessibilityLabel(isCompleted ? "Completed" : "Hold to complete")
+    }
+}
+
+struct HoldToCompleteBar: View {
+    let progress: Double
+    let secondaryText: Color
+    let trackFill: Color
+    let fillColor: Color
+    let isCompleted: Bool
+    let onPress: () -> Void
+    let onRelease: () -> Void
+
+    var body: some View {
+        let gesture = DragGesture(minimumDistance: 0)
+            .onChanged { _ in onPress() }
+            .onEnded { _ in onRelease() }
+
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(trackFill)
+                        .frame(height: 11)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(secondaryText.opacity(0.35), lineWidth: 1)
+                        )
+
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(fillColor)
+                        .frame(width: max(6, CGFloat(progress) * geo.size.width), height: 11)
+                        .animation(.linear(duration: 0.08), value: progress)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            }
+            .frame(height: 11)
+
+            Text(isCompleted ? "Completed for today" : "Press and hold to complete")
+                .font(.caption)
+                .foregroundStyle(secondaryText)
+                .frame(maxWidth: .infinity)
+        }
+        .contentShape(Rectangle())
         .gesture(gesture)
         .accessibilityLabel(isCompleted ? "Completed" : "Hold to complete")
     }

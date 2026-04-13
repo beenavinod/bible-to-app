@@ -24,6 +24,7 @@ final class AppState: ObservableObject {
 
     @Published private(set) var theme: AppTheme
     @Published private(set) var background: AppBackground
+    @Published private(set) var homeWallpaper: HomeWallpaper
     @Published private(set) var widgetsEnabled: Bool
     @Published private(set) var hasCompletedOnboarding: Bool
     @Published private(set) var preferredName: String?
@@ -55,6 +56,7 @@ final class AppState: ObservableObject {
 
         theme = persistence.selectedTheme()
         background = persistence.selectedBackground()
+        homeWallpaper = persistence.selectedHomeWallpaper()
         widgetsEnabled = persistence.widgetsEnabled()
         hasCompletedOnboarding = persistence.hasCompletedOnboarding()
         preferredName = persistence.preferredName()
@@ -78,6 +80,7 @@ final class AppState: ObservableObject {
         self.sessionUserId = nil
         theme = persistence.selectedTheme()
         background = persistence.selectedBackground()
+        homeWallpaper = persistence.selectedHomeWallpaper()
         widgetsEnabled = persistence.widgetsEnabled()
         hasCompletedOnboarding = true
         preferredName = persistence.preferredName()
@@ -224,6 +227,11 @@ final class AppState: ObservableObject {
     func setBackground(_ background: AppBackground) {
         self.background = background
         persistence.setSelectedBackground(background)
+    }
+
+    func setHomeWallpaper(_ wallpaper: HomeWallpaper) {
+        homeWallpaper = wallpaper
+        persistence.setSelectedHomeWallpaper(wallpaper)
     }
 
     func setWidgetsEnabled(_ isEnabled: Bool) {
