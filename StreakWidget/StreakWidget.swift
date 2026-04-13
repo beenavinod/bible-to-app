@@ -1,10 +1,3 @@
-//
-//  StreakWidget.swift
-//  StreakWidget
-//
-//  Created by Beena Vinod on 11/04/26.
-//
-
 import SwiftUI
 import WidgetKit
 
@@ -14,11 +7,11 @@ struct Provider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (StreakEntry) -> Void) {
-        completion(.placeholder)
+        completion(currentEntry())
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<StreakEntry>) -> Void) {
-        let entry = StreakEntry.placeholder
+        let entry = currentEntry()
         let nextUpdate = Calendar.current.nextDate(
             after: entry.date,
             matching: DateComponents(hour: 0, minute: 5),
@@ -26,6 +19,22 @@ struct Provider: TimelineProvider {
         ) ?? entry.date.addingTimeInterval(60 * 60 * 6)
 
         completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+    }
+
+    private func currentEntry() -> StreakEntry {
+        guard let data = WidgetDataStore.readStreak() else {
+            return .placeholder
+        }
+        let week = data.weekDays.map { day in
+            WeekdayStatus(symbol: day.symbol, isCompleted: day.isCompleted)
+        }
+        return StreakEntry(
+            date: .now,
+            currentStreak: data.currentStreak,
+            longestStreak: data.longestStreak,
+            totalCompletedDays: data.totalCompletedDays,
+            week: week
+        )
     }
 }
 
@@ -38,16 +47,16 @@ struct StreakEntry: TimelineEntry {
 
     static let placeholder = StreakEntry(
         date: .now,
-        currentStreak: 6,
-        longestStreak: 21,
-        totalCompletedDays: 45,
+        currentStreak: 0,
+        longestStreak: 0,
+        totalCompletedDays: 0,
         week: [
-            WeekdayStatus(symbol: "M", isCompleted: true),
-            WeekdayStatus(symbol: "T", isCompleted: true),
-            WeekdayStatus(symbol: "W", isCompleted: true),
+            WeekdayStatus(symbol: "S", isCompleted: false),
+            WeekdayStatus(symbol: "M", isCompleted: false),
+            WeekdayStatus(symbol: "T", isCompleted: false),
+            WeekdayStatus(symbol: "W", isCompleted: false),
             WeekdayStatus(symbol: "T", isCompleted: false),
             WeekdayStatus(symbol: "F", isCompleted: false),
-            WeekdayStatus(symbol: "S", isCompleted: false),
             WeekdayStatus(symbol: "S", isCompleted: false)
         ]
     )
@@ -266,4 +275,3 @@ private enum WidgetPalette {
 } timeline: {
     StreakEntry.placeholder
 }
-

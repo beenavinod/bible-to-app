@@ -1,10 +1,3 @@
-//
-//  VerseTaskWidget.swift
-//  VerseTaskWidget
-//
-//  Created by Beena Vinod on 11/04/26.
-//
-
 import SwiftUI
 import WidgetKit
 
@@ -14,11 +7,11 @@ struct Provider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (VerseTaskEntry) -> Void) {
-        completion(.placeholder)
+        completion(currentEntry())
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<VerseTaskEntry>) -> Void) {
-        let entry = VerseTaskEntry.placeholder
+        let entry = currentEntry()
         let nextUpdate = Calendar.current.nextDate(
             after: entry.date,
             matching: DateComponents(hour: 0, minute: 5),
@@ -26,6 +19,20 @@ struct Provider: TimelineProvider {
         ) ?? entry.date.addingTimeInterval(60 * 60 * 6)
 
         completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+    }
+
+    private func currentEntry() -> VerseTaskEntry {
+        guard let data = WidgetDataStore.readVerseTask() else {
+            return .placeholder
+        }
+        return VerseTaskEntry(
+            date: .now,
+            verseText: data.verseText,
+            reference: data.reference,
+            taskTitle: data.taskTitle,
+            taskDescription: data.taskDescription,
+            symbolName: data.symbolName
+        )
     }
 }
 

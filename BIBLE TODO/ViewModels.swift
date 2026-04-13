@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import WidgetKit
 
 @MainActor
 final class HomeViewModel: ObservableObject {
@@ -43,6 +44,7 @@ final class HomeViewModel: ObservableObject {
             focusedDayIndex = min(focusedDayIndex, max(0, orderedDayStarts.count - 1))
             applyDisplayedRecord()
             updateNavigationFlags()
+            syncVerseTaskWidget(verse: verse)
         } catch {
             recordsByDay = [:]
             orderedDayStarts = []
@@ -171,6 +173,7 @@ final class HomeViewModel: ObservableObject {
                 completed: true
             )
         }
+        WidgetCenter.shared.reloadTimelines(ofKind: "VerseTaskWidget")
     }
 
     private func updateCompletedState(for id: UUID) {
@@ -182,6 +185,19 @@ final class HomeViewModel: ObservableObject {
     private func applyCompletionState(to record: DailyRecord) -> DailyRecord {
         let isCompleted = record.completed || persistence.completedRecordIDs().contains(record.id)
         return DailyRecord(id: record.id, verse: record.verse, completed: isCompleted)
+    }
+
+    private func syncVerseTaskWidget(verse: Verse) {
+        let dateISO = BibleTodoDate.formatLocalDay(verse.date)
+        WidgetDataStore.writeVerseTask(SharedVerseTaskData(
+            verseText: verse.text,
+            reference: verse.reference,
+            taskTitle: verse.taskTitle,
+            taskDescription: verse.taskDescription,
+            symbolName: verse.symbolName,
+            dateISO: dateISO
+        ))
+        WidgetCenter.shared.reloadTimelines(ofKind: "VerseTaskWidget")
     }
 }
 
@@ -241,6 +257,7 @@ final class JourneyViewModel: ObservableObject {
             earnedBadgeIds = (try? await earned) ?? []
             records = loadedRecords.map(applyCompletionState)
             recalculateSummary()
+            syncWidgetData()
         } catch {
             records = []
             achievements = BadgeIcons.fallbackCatalog
@@ -280,6 +297,52 @@ final class JourneyViewModel: ObservableObject {
             .sorted { $0.verse.date > $1.verse.date }
             .prefix { $0.completed }
             .count
+    }
+
+    private func syncWidgetData() {
+        syncStreakWidget()
+        syncBadgeWidget()
+    }
+
+    private func syncStreakWidget() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        let symbols = ["S", "M", "T", "W", "T", "F", "S"]
+
+        let weekDays: [SharedWeekDay] = (0..<7).map { offset in
+            let day = calendar.date(byAdding: .day, value: offset, to: startOfWeek) ?? today
+            let completed = records.contains { record in
+                record.completed && calendar.isDate(record.verse.date, inSameDayAs: day)
+            }
+            let weekdayIndex = calendar.component(.weekday, from: day) - 1
+            let symbol = symbols[weekdayIndex]
+            return SharedWeekDay(symbol: symbol, isCompleted: completed)
+        }
+
+        WidgetDataStore.writeStreak(SharedStreakData(
+            currentStreak: summary.currentStreak,
+            longestStreak: summary.longestStreak,
+            totalCompletedDays: summary.totalCompletedDays,
+            weekDays: weekDays
+        ))
+        WidgetCenter.shared.reloadTimelines(ofKind: "StreakWidget")
+    }
+
+    private func syncBadgeWidget() {
+        let earned = achievements
+            .filter { earnedBadgeIds.contains($0.id) }
+            .sorted { $0.weight < $1.weight }
+            .map { badge in
+                SharedBadgeEntry(
+                    symbolName: badge.symbolName,
+                    title: badge.name,
+                    milestone: "\(badge.actionsRequired)d"
+                )
+            }
+
+        WidgetDataStore.writeBadges(SharedBadgeData(badges: earned))
+        WidgetCenter.shared.reloadTimelines(ofKind: "LockScreenIconWidget")
     }
 }
 

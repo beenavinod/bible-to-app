@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import SwiftUI
 import Supabase
+import WidgetKit
 
 @MainActor
 final class AppState: ObservableObject {
@@ -215,6 +216,7 @@ final class AppState: ObservableObject {
         authSessionRevision += 1
         hasCompletedOnboarding = persistence.hasCompletedOnboarding()
         rootPhase = supabaseClient != nil ? .needsAuth : .configurationRequired
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - Settings / theme

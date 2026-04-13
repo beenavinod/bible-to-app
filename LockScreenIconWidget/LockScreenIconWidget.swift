@@ -1,35 +1,44 @@
-//
-//  LockScreenIconWidget.swift
-//  LockScreenIconWidget
-//
-//  Created by Beena Vinod on 11/04/26.
-//
-
 import SwiftUI
 import WidgetKit
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> LockScreenIconEntry {
-        .preview(icon: LockScreenMilestoneIcon.unlockedDefaults[0])
+        .placeholder
     }
 
     func getSnapshot(in context: Context, completion: @escaping (LockScreenIconEntry) -> Void) {
-        completion(.preview(icon: LockScreenMilestoneIcon.unlockedDefaults[0]))
+        let entries = buildEntries()
+        completion(entries.first ?? .placeholder)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<LockScreenIconEntry>) -> Void) {
+        let entries = buildEntries()
+        guard !entries.isEmpty else {
+            let nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: .now) ?? Date.now.addingTimeInterval(3600)
+            completion(Timeline(entries: [.placeholder], policy: .after(nextUpdate)))
+            return
+        }
+        let refreshDate = Calendar.current.date(byAdding: .hour, value: entries.count, to: .now)
+            ?? Date.now.addingTimeInterval(Double(entries.count) * 3600)
+        completion(Timeline(entries: entries, policy: .after(refreshDate)))
+    }
+
+    private func buildEntries() -> [LockScreenIconEntry] {
+        guard let data = WidgetDataStore.readBadges(), !data.badges.isEmpty else {
+            return []
+        }
         let now = Date()
-        let icons = LockScreenMilestoneIcon.unlockedDefaults
-        let entries = icons.enumerated().map { index, icon in
+        return data.badges.enumerated().map { index, badge in
             LockScreenIconEntry(
                 date: Calendar.current.date(byAdding: .hour, value: index, to: now) ?? now,
-                icon: icon,
-                unlockedCount: icons.count
+                icon: LockScreenMilestoneIcon(
+                    title: badge.title,
+                    symbolName: badge.symbolName,
+                    milestone: badge.milestone
+                ),
+                unlockedCount: data.badges.count
             )
         }
-
-        let refreshDate = Calendar.current.date(byAdding: .hour, value: icons.count, to: now) ?? now.addingTimeInterval(60 * 60 * 2)
-        completion(Timeline(entries: entries, policy: .after(refreshDate)))
     }
 }
 
@@ -38,21 +47,17 @@ struct LockScreenIconEntry: TimelineEntry {
     let icon: LockScreenMilestoneIcon
     let unlockedCount: Int
 
-    static func preview(icon: LockScreenMilestoneIcon) -> LockScreenIconEntry {
-        LockScreenIconEntry(date: .now, icon: icon, unlockedCount: LockScreenMilestoneIcon.unlockedDefaults.count)
-    }
+    static let placeholder = LockScreenIconEntry(
+        date: .now,
+        icon: LockScreenMilestoneIcon(title: "Bible Life", symbolName: "book.closed.fill", milestone: "Start"),
+        unlockedCount: 0
+    )
 }
 
-struct LockScreenMilestoneIcon: Identifiable, Equatable {
-    let id = UUID()
+struct LockScreenMilestoneIcon: Equatable {
     let title: String
     let symbolName: String
     let milestone: String
-
-    static let unlockedDefaults: [LockScreenMilestoneIcon] = [
-        LockScreenMilestoneIcon(title: "Jesus", symbolName: "person.fill", milestone: "Unlocked"),
-        LockScreenMilestoneIcon(title: "Cross", symbolName: "cross.case.fill", milestone: "3d")
-    ]
 }
 
 struct LockScreenIconWidgetEntryView: View {
@@ -128,6 +133,5 @@ struct LockScreenIconWidget: Widget {
 #Preview(as: .accessoryCircular) {
     LockScreenIconWidget()
 } timeline: {
-    LockScreenIconEntry.preview(icon: .unlockedDefaults[0])
-    LockScreenIconEntry.preview(icon: .unlockedDefaults[1])
+    LockScreenIconEntry.placeholder
 }
