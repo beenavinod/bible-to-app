@@ -7,6 +7,7 @@ struct OnboardingFlowView: View {
     @State private var draftName = ""
     @State private var selections: [String: String] = [:]
     @State private var multiSelections: [String: Set<String>] = [:]
+    @State private var showBadgeUnlocked = false
 
     /// Flow matches onboarding spec: loader → personalization → Pain–Gap–Truth → … → first task → save → paywall.
     private let totalSteps = 31
@@ -33,6 +34,33 @@ struct OnboardingFlowView: View {
             }
         }
         .animation(.spring(response: 0.48, dampingFraction: 0.88), value: currentStep)
+        .fullScreenCover(isPresented: $showBadgeUnlocked) {
+            BadgeUnlockedSheet(
+                achievement: firstStepBadge,
+                palette: appState.palette,
+                onContinue: {
+                    showBadgeUnlocked = false
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
+                        currentStep += 1
+                    }
+                }
+            )
+            .interactiveDismissDisabled()
+        }
+    }
+
+    private var firstStepBadge: Achievement {
+        BadgeIcons.fallbackCatalog.first(where: { $0.slug == "task_streak_1" })
+            ?? Achievement(
+                id: -1,
+                slug: "task_streak_1",
+                name: "First Step",
+                badgeDescription: "The journey begins",
+                type: .taskStreak,
+                actionsRequired: 1,
+                weight: 1,
+                isActive: true
+            )
     }
 
     private var progressHeader: some View {
@@ -527,25 +555,7 @@ struct OnboardingFlowView: View {
                 buttonTitle: "Start My First Task"
             )
         case 27: // Day 1 first task (canonical: same DB task all users get as completed after onboarding)
-            messageScreen(
-                stepKey: step,
-                eyebrow: nil,
-                title: FirstOnboardingTask.taskTitle,
-                subtitle: nil,
-                card: {
-                    OnboardingTaskPreviewCard(
-                        verse: FirstOnboardingTask.verseQuote,
-                        reference: FirstOnboardingTask.verseReference,
-                        bulletTitle: "Task:",
-                        bullets: [
-                            FirstOnboardingTask.taskDescription
-                        ],
-                        palette: appState.palette
-                    )
-                },
-                footer: nil,
-                buttonTitle: "Mark as Complete"
-            )
+            firstTaskScreen(stepKey: step)
         case 28: // Completion
             celebrationScreen(stepKey: step)
         case 29: // 28 — Save journey
@@ -661,6 +671,34 @@ struct OnboardingFlowView: View {
                 multiSelections[selectionKey] = set
             },
             onContinue: advance
+        )
+    }
+
+    private func firstTaskScreen(stepKey: Int) -> some View {
+        OnboardingMessageScreen(
+            stepKey: stepKey,
+            eyebrow: nil,
+            title: FirstOnboardingTask.taskTitle,
+            subtitle: nil,
+            footer: nil,
+            buttonTitle: "Mark as Complete",
+            buttonIcon: nil,
+            topIcon: nil,
+            palette: appState.palette,
+            card: {
+                AnyView(
+                    OnboardingTaskPreviewCard(
+                        verse: FirstOnboardingTask.verseQuote,
+                        reference: FirstOnboardingTask.verseReference,
+                        bulletTitle: "Task:",
+                        bullets: [FirstOnboardingTask.taskDescription],
+                        palette: appState.palette
+                    )
+                )
+            },
+            onContinue: {
+                showBadgeUnlocked = true
+            }
         )
     }
 

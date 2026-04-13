@@ -351,7 +351,10 @@ struct HomeView: View {
 
     private var shareAction: (() -> Void)? {
         guard let record = viewModel.displayedRecord else { return nil }
-        return { sharePayload = .verse(record) }
+        return {
+            sharePayload = .verse(record)
+            appState.awardFirstShareBadgeIfNeeded()
+        }
     }
 }
 

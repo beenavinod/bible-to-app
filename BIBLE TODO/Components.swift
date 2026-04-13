@@ -234,35 +234,421 @@ struct AchievementBadgeView: View {
     let unlocked: Bool
     let palette: AppThemePalette
 
+    private var subtitle: String {
+        switch achievement.type {
+        case .taskStreak:
+            "\(achievement.actionsRequired)d"
+        case .verseShare:
+            "\(achievement.actionsRequired)x"
+        case .firstShare:
+            "1st"
+        }
+    }
+
     var body: some View {
         VStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(unlocked ? achievement.accentColor.color.opacity(0.2) : palette.card)
-                .frame(height: 68)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(unlocked ? achievement.accentColor.color.opacity(0.45) : palette.border, lineWidth: 1)
-                }
-                .overlay {
-                    Image(systemName: unlocked ? achievement.symbolName : "lock")
-                        .font(.system(size: 28))
-                        .foregroundStyle(unlocked ? achievement.accentColor.color : palette.secondaryText.opacity(0.55))
-                }
-
-            VStack(spacing: 2) {
-                Text(achievement.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(palette.primaryText)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, minHeight: 36, alignment: .top)
-                Text(achievement.subtitle)
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryText)
-            }
-            .frame(maxWidth: .infinity, alignment: .top)
+            badgeIcon
+            badgeLabel
         }
         .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    private var badgeIcon: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(palette.accent.opacity(0.15))
+            .frame(height: 68)
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(palette.accent.opacity(0.45), lineWidth: 1)
+            }
+            .overlay {
+                Image(systemName: achievement.symbolName)
+                    .font(.system(size: 28))
+                    .foregroundStyle(palette.accent)
+                    .scaleEffect(unlocked ? 1.05 : 1.0)
+                    .shadow(
+                        color: unlocked ? achievement.rarity.glowColor : .clear,
+                        radius: unlocked ? 10 : 0
+                    )
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if !unlocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(palette.secondaryText.opacity(0.7))
+                        .padding(3)
+                        .background(
+                            Circle()
+                                .fill(palette.card)
+                                .shadow(color: palette.shadow, radius: 2, y: 1)
+                        )
+                        .offset(x: -4, y: -4)
+                }
+            }
+    }
+
+    private var badgeLabel: some View {
+        VStack(spacing: 2) {
+            Text(achievement.name)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(palette.primaryText)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, minHeight: 36, alignment: .top)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(palette.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+}
+
+struct BadgeDetailSheet: View {
+    let achievement: Achievement
+    let unlocked: Bool
+    let palette: AppThemePalette
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Spacer(minLength: 24)
+
+                ZStack {
+                    Circle()
+                        .fill(palette.accent.opacity(0.15))
+                        .frame(width: 120, height: 120)
+                        .overlay {
+                            Circle()
+                                .stroke(palette.accent.opacity(0.4), lineWidth: 2)
+                        }
+                        .shadow(
+                            color: unlocked ? achievement.rarity.glowColor : .clear,
+                            radius: unlocked ? 16 : 0
+                        )
+
+                    Image(systemName: achievement.symbolName)
+                        .font(.system(size: 48))
+                        .foregroundStyle(palette.accent)
+
+                    if !unlocked {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(palette.secondaryText.opacity(0.7))
+                            .padding(5)
+                            .background(
+                                Circle()
+                                    .fill(palette.card)
+                                    .shadow(color: palette.shadow, radius: 2, y: 1)
+                            )
+                            .offset(x: 38, y: 38)
+                    }
+                }
+
+                Text(achievement.name)
+                    .font(.system(.title2, design: .serif, weight: .semibold))
+                    .foregroundStyle(palette.primaryText)
+                    .padding(.top, 20)
+
+                Text(achievement.badgeDescription)
+                    .font(.body)
+                    .foregroundStyle(palette.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 6)
+                    .padding(.horizontal, 32)
+
+                Divider()
+                    .overlay(palette.border.opacity(0.7))
+                    .padding(.vertical, 24)
+                    .padding(.horizontal, 40)
+
+                VStack(spacing: 14) {
+                    badgeInfoRow(label: "Type", value: badgeTypeLabel)
+                    badgeInfoRow(label: "Rarity", value: achievement.rarity.rawValue.capitalized)
+                    badgeInfoRow(label: "Requirement", value: requirementLabel)
+                    badgeInfoRow(label: "Status", value: unlocked ? "Earned" : "Locked")
+                }
+                .padding(.horizontal, 32)
+
+                Spacer(minLength: 32)
+
+                if unlocked {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(palette.accent)
+                        Text("You earned this badge!")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(palette.accent)
+                    }
+                    .padding(.bottom, 24)
+                } else {
+                    Text("Keep going to unlock this badge")
+                        .font(.subheadline)
+                        .foregroundStyle(palette.secondaryText)
+                        .padding(.bottom, 24)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(palette.canvas.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                        .foregroundStyle(palette.accent)
+                }
+            }
+            .toolbarBackground(palette.card.opacity(0.92), for: .navigationBar)
+        }
+    }
+
+    private var badgeTypeLabel: String {
+        switch achievement.type {
+        case .taskStreak: "Daily Streak"
+        case .verseShare: "Verse Sharing"
+        case .firstShare: "First Share"
+        }
+    }
+
+    private var requirementLabel: String {
+        switch achievement.type {
+        case .taskStreak:
+            "\(achievement.actionsRequired) day streak"
+        case .verseShare:
+            "Share \(achievement.actionsRequired) verses"
+        case .firstShare:
+            "Share a verse for the first time"
+        }
+    }
+
+    private func badgeInfoRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(palette.secondaryText)
+            Spacer()
+            Text(value)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(palette.primaryText)
+        }
+    }
+}
+
+// MARK: - Badge Unlocked Celebration
+
+struct BadgeUnlockedSheet: View {
+    let achievement: Achievement
+    let palette: AppThemePalette
+    let onContinue: () -> Void
+
+    @State private var iconScale: CGFloat = 0.3
+    @State private var iconOpacity: Double = 0
+    @State private var glowRadius: CGFloat = 0
+    @State private var textOpacity: Double = 0
+    @State private var buttonOpacity: Double = 0
+    @State private var confettiParticles: [ConfettiParticle] = []
+    @State private var confettiActive = false
+
+    var body: some View {
+        ZStack {
+            palette.canvas.ignoresSafeArea()
+
+            ForEach(confettiParticles) { particle in
+                ConfettiPieceView(particle: particle, active: confettiActive)
+            }
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(palette.accent.opacity(0.12))
+                        .frame(width: 160, height: 160)
+                        .shadow(
+                            color: achievement.rarity.glowColor.opacity(0.6),
+                            radius: glowRadius
+                        )
+
+                    Circle()
+                        .stroke(palette.accent.opacity(0.35), lineWidth: 2)
+                        .frame(width: 160, height: 160)
+
+                    Image(systemName: achievement.symbolName)
+                        .font(.system(size: 64, weight: .medium))
+                        .foregroundStyle(palette.accent)
+                        .shadow(
+                            color: achievement.rarity.glowColor,
+                            radius: glowRadius * 0.6
+                        )
+                }
+                .scaleEffect(iconScale)
+                .opacity(iconOpacity)
+
+                VStack(spacing: 8) {
+                    Text("Badge Unlocked!")
+                        .font(.caption.weight(.bold))
+                        .textCase(.uppercase)
+                        .tracking(2)
+                        .foregroundStyle(palette.accent)
+
+                    Text(achievement.name)
+                        .font(.system(.title, design: .serif, weight: .bold))
+                        .foregroundStyle(palette.primaryText)
+
+                    Text(achievement.badgeDescription)
+                        .font(.title3)
+                        .foregroundStyle(palette.secondaryText)
+                        .multilineTextAlignment(.center)
+
+                    Text(achievement.rarity.rawValue.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .tracking(1.4)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(achievement.rarity.glowColor.opacity(0.2))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(achievement.rarity.glowColor.opacity(0.5), lineWidth: 1)
+                                )
+                        )
+                        .foregroundStyle(palette.primaryText)
+                        .padding(.top, 4)
+                }
+                .padding(.top, 28)
+                .padding(.horizontal, 32)
+                .opacity(textOpacity)
+
+                Spacer()
+
+                Button(action: onContinue) {
+                    Text("Continue")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 60)
+                        .background(
+                            LinearGradient(
+                                colors: [palette.headerAccent, palette.accent],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .shadow(color: palette.shadow.opacity(0.34), radius: 18, x: 0, y: 10)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 36)
+                .opacity(buttonOpacity)
+            }
+        }
+        .task {
+            confettiParticles = (0..<40).map { _ in ConfettiParticle() }
+
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.65)) {
+                iconScale = 1.0
+                iconOpacity = 1.0
+            }
+
+            try? await Task.sleep(for: .milliseconds(200))
+            confettiActive = true
+
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                glowRadius = 24
+            }
+
+            try? await Task.sleep(for: .milliseconds(300))
+            withAnimation(.easeOut(duration: 0.5)) {
+                textOpacity = 1.0
+            }
+
+            try? await Task.sleep(for: .milliseconds(300))
+            withAnimation(.easeOut(duration: 0.4)) {
+                buttonOpacity = 1.0
+            }
+        }
+    }
+}
+
+private struct ConfettiParticle: Identifiable {
+    let id = UUID()
+    let color: Color
+    let startXFraction: CGFloat
+    let driftX: CGFloat
+    let size: CGFloat
+    let rotation: Double
+    let shape: ConfettiShape
+    let duration: Double
+    let delay: Double
+
+    enum ConfettiShape: CaseIterable {
+        case circle, rectangle, triangle
+    }
+
+    init() {
+        let colors: [Color] = [
+            .yellow, .orange, .green, .blue, .purple, .pink, .red, .mint, .teal
+        ]
+        color = colors.randomElement() ?? .yellow
+        startXFraction = CGFloat.random(in: -0.05...1.05)
+        driftX = CGFloat.random(in: -60...60)
+        size = CGFloat.random(in: 6...12)
+        rotation = Double.random(in: 0...360)
+        shape = ConfettiShape.allCases.randomElement() ?? .circle
+        duration = Double.random(in: 2.0...3.5)
+        delay = Double.random(in: 0...0.5)
+    }
+}
+
+private struct ConfettiPieceView: View {
+    let particle: ConfettiParticle
+    let active: Bool
+
+    var body: some View {
+        GeometryReader { geo in
+            let startX = geo.size.width * particle.startXFraction
+            confettiContent
+                .rotationEffect(.degrees(active ? particle.rotation + 360 : particle.rotation))
+                .position(
+                    x: active ? startX + particle.driftX : startX,
+                    y: active ? geo.size.height + 40 : -20
+                )
+                .opacity(active ? 0 : 1)
+                .animation(
+                    .easeIn(duration: particle.duration).delay(particle.delay),
+                    value: active
+                )
+        }
+    }
+
+    @ViewBuilder
+    private var confettiContent: some View {
+        switch particle.shape {
+        case .circle:
+            Circle()
+                .fill(particle.color)
+                .frame(width: particle.size, height: particle.size)
+        case .rectangle:
+            RoundedRectangle(cornerRadius: 2)
+                .fill(particle.color)
+                .frame(width: particle.size, height: particle.size * 1.6)
+        case .triangle:
+            ConfettiTriangle()
+                .fill(particle.color)
+                .frame(width: particle.size, height: particle.size)
+        }
+    }
+}
+
+private struct ConfettiTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 

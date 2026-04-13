@@ -4,6 +4,9 @@ protocol BibleService {
     func fetchTodayVerse() async throws -> Verse
     func fetchHistory() async throws -> [DailyRecord]
     func fetchStreakSummary() async throws -> StreakSummary
+    func fetchBadgeDefinitions() async throws -> [Achievement]
+    func fetchUserEarnedBadgeIds() async throws -> Set<Int>
+    func awardBadge(badgeDefinitionId: Int) async throws
     /// Persists task completion via Supabase (`SupabaseBibleService`); throws when signed out.
     func syncTaskCompletion(userTaskId: UUID, assignedDateISO: String, completed: Bool) async throws
 }
@@ -19,6 +22,18 @@ final class SignedOutBibleService: BibleService {
     }
 
     func fetchStreakSummary() async throws -> StreakSummary {
+        throw BibleTodoRepositoryError.notAuthenticated
+    }
+
+    func fetchBadgeDefinitions() async throws -> [Achievement] {
+        throw BibleTodoRepositoryError.notAuthenticated
+    }
+
+    func fetchUserEarnedBadgeIds() async throws -> Set<Int> {
+        throw BibleTodoRepositoryError.notAuthenticated
+    }
+
+    func awardBadge(badgeDefinitionId: Int) async throws {
         throw BibleTodoRepositoryError.notAuthenticated
     }
 
@@ -223,6 +238,16 @@ final class MockBibleService: BibleService {
             totalCompletedDays: completedRecords.count
         )
     }
+
+    func fetchBadgeDefinitions() async throws -> [Achievement] {
+        BadgeIcons.fallbackCatalog
+    }
+
+    func fetchUserEarnedBadgeIds() async throws -> Set<Int> {
+        []
+    }
+
+    func awardBadge(badgeDefinitionId: Int) async throws {}
 
     func syncTaskCompletion(userTaskId: UUID, assignedDateISO: String, completed: Bool) async throws {
         _ = userTaskId

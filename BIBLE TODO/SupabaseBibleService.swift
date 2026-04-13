@@ -60,6 +60,19 @@ final class SupabaseBibleService: BibleService {
         try await repository.fetchStreakSummary(userId: userId)
     }
 
+    func fetchBadgeDefinitions() async throws -> [Achievement] {
+        let rows = try await repository.fetchBadgeDefinitions()
+        return rows.compactMap { $0.toAchievement() }
+    }
+
+    func fetchUserEarnedBadgeIds() async throws -> Set<Int> {
+        try await repository.fetchUserEarnedBadgeIds(userId: userId)
+    }
+
+    func awardBadge(badgeDefinitionId: Int) async throws {
+        try await repository.awardBadge(userId: userId, badgeDefinitionId: badgeDefinitionId)
+    }
+
     func syncTaskCompletion(userTaskId: UUID, assignedDateISO: String, completed: Bool) async throws {
         if completed {
             _ = try await repository.completeTask(userId: userId, userTaskId: userTaskId, date: assignedDateISO)

@@ -189,6 +189,8 @@ final class HomeViewModel: ObservableObject {
 final class JourneyViewModel: ObservableObject {
     @Published private(set) var records: [DailyRecord] = []
     @Published private(set) var summary = StreakSummary(currentStreak: 0, longestStreak: 0, totalCompletedDays: 0)
+    @Published private(set) var achievements: [Achievement] = []
+    @Published private(set) var earnedBadgeIds: Set<Int> = []
     @Published var isCalendarExpanded = true
     @Published var displayedMonth: Date = .now
 
@@ -222,20 +224,26 @@ final class JourneyViewModel: ObservableObject {
         }
     }
 
-    var achievements: [Achievement] {
-        Achievement.defaults
+    func isBadgeEarned(_ achievement: Achievement) -> Bool {
+        earnedBadgeIds.contains(achievement.id)
     }
 
     func load() async {
         do {
             async let history = service.fetchHistory()
             async let streak = service.fetchStreakSummary()
+            async let badges = service.fetchBadgeDefinitions()
+            async let earned = service.fetchUserEarnedBadgeIds()
             let loadedRecords = try await history
             summary = try await streak
+            let fetched = (try? await badges) ?? []
+            achievements = fetched.isEmpty ? BadgeIcons.fallbackCatalog : fetched
+            earnedBadgeIds = (try? await earned) ?? []
             records = loadedRecords.map(applyCompletionState)
             recalculateSummary()
         } catch {
             records = []
+            achievements = BadgeIcons.fallbackCatalog
         }
     }
 

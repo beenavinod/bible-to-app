@@ -268,4 +268,14 @@ final class AppState: ObservableObject {
 
     /// Shared by feature views that need `UserDefaults`-backed prefs without going through `BibleService`.
     var appPersistence: AppPersistence { persistence }
+
+    // MARK: - Badge awards
+
+    /// Awards the first-share badge on the user's first share action. Safe to call repeatedly.
+    func awardFirstShareBadgeIfNeeded() {
+        guard let userId = sessionUserId, let repository else { return }
+        Task {
+            _ = try? await repository.awardFirstShareBadgeIfNeeded(userId: userId)
+        }
+    }
 }

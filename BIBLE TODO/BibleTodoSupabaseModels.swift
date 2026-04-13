@@ -203,3 +203,66 @@ struct AssignedDateOnly: Decodable, Sendable {
         case assignedDate = "assigned_date"
     }
 }
+
+// MARK: - Badge Definitions
+
+/// Row decoded from the `badge_definitions` table.
+struct BadgeDefinitionRow: Decodable, Sendable {
+    let id: Int
+    let slug: String
+    let name: String
+    let description: String
+    let type: String
+    let actionsRequired: Int
+    let weight: Int
+    let isActive: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, slug, name, description, type, weight
+        case actionsRequired = "actions_required"
+        case isActive = "is_active"
+    }
+
+    /// Converts to the client-side `Achievement` model.
+    func toAchievement() -> Achievement? {
+        guard let badgeType = BadgeType(rawValue: type) else { return nil }
+        return Achievement(
+            id: id,
+            slug: slug,
+            name: name,
+            badgeDescription: description,
+            type: badgeType,
+            actionsRequired: actionsRequired,
+            weight: weight,
+            isActive: isActive
+        )
+    }
+}
+
+// MARK: - User Badges
+
+/// Row decoded from the `user_badges` table.
+struct UserBadgeRow: Decodable, Sendable {
+    let id: UUID
+    let userId: UUID
+    let badgeDefinitionId: Int
+    let earnedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case badgeDefinitionId = "badge_definition_id"
+        case earnedAt = "earned_at"
+    }
+}
+
+/// Payload for inserting a row into `user_badges`.
+struct UserBadgeInsert: Encodable, Sendable {
+    let userId: UUID
+    let badgeDefinitionId: Int
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case badgeDefinitionId = "badge_definition_id"
+    }
+}

@@ -76,7 +76,8 @@ final class BibleTodoRepository: Sendable {
             .insert(insert)
             .execute()
 
-        _ = try await updateStreak(userId: userId, completedDate: today)
+        let info = try await updateStreak(userId: userId, completedDate: today)
+        _ = try? await evaluateAndAwardStreakBadges(userId: userId, currentStreak: info.currentStreak)
     }
 
     private func fetchCanonicalFirstOnboardingVerseTaskId() async throws -> UUID {
@@ -258,6 +259,9 @@ final class BibleTodoRepository: Sendable {
 
         let info = try await updateStreak(userId: userId, completedDate: date)
 
+        // Evaluate and award any earned streak badges after the streak update
+        _ = try? await evaluateAndAwardStreakBadges(userId: userId, currentStreak: info.currentStreak)
+
         if var cached = getCachedDailyContent(userId: userId), cached.userTaskId == userTaskId {
             cached.status = "completed"
             cached.completedAt = completedAt
@@ -413,6 +417,68 @@ final class BibleTodoRepository: Sendable {
             .range(from: offset, to: offset + max(limit - 1, 0))
             .execute()
             .value
+    }
+
+    // MARK: - Badges
+
+    func fetchBadgeDefinitions() async throws -> [BadgeDefinitionRow] {
+        try await client
+            .from("badge_definitions")
+            .select()
+            .eq("is_active", value: true)
+            .order("weight")
+            .execute()
+            .value
+    }
+
+    func fetchUserEarnedBadgeIds(userId: UUID) async throws -> Set<Int> {
+        let rows: [UserBadgeRow] = try await client
+            .from("user_badges")
+            .select()
+            .eq("user_id", value: userId)
+            .execute()
+            .value
+        return Set(rows.map(\.badgeDefinitionId))
+    }
+
+    func awardBadge(userId: UUID, badgeDefinitionId: Int) async throws {
+        let insert = UserBadgeInsert(userId: userId, badgeDefinitionId: badgeDefinitionId)
+        try await client
+            .from("user_badges")
+            .upsert(insert, onConflict: "user_id,badge_definition_id")
+            .execute()
+    }
+
+    /// After a streak update, checks all task-streak badges and awards any that the user
+    /// has now earned but doesn't already have.
+    func evaluateAndAwardStreakBadges(userId: UUID, currentStreak: Int) async throws -> [Int] {
+        let definitions = try await fetchBadgeDefinitions()
+        let earned = try await fetchUserEarnedBadgeIds(userId: userId)
+
+        let streakBadges = definitions.filter { $0.type == "task-streak" }
+        var newlyAwarded: [Int] = []
+
+        for badge in streakBadges {
+            guard currentStreak >= badge.actionsRequired, !earned.contains(badge.id) else { continue }
+            try await awardBadge(userId: userId, badgeDefinitionId: badge.id)
+            newlyAwarded.append(badge.id)
+        }
+
+        return newlyAwarded
+    }
+
+    /// Awards the first-share badge if it hasn't been awarded yet.
+    func awardFirstShareBadgeIfNeeded(userId: UUID) async throws -> Int? {
+        let definitions = try await fetchBadgeDefinitions()
+        guard let firstShareBadge = definitions.first(where: { $0.slug == "first_share" }) else {
+            return nil
+        }
+
+        let earned = try await fetchUserEarnedBadgeIds(userId: userId)
+        guard !earned.contains(firstShareBadge.id) else { return nil }
+
+        try await awardBadge(userId: userId, badgeDefinitionId: firstShareBadge.id)
+        return firstShareBadge.id
     }
 
     func fetchStreakSummary(userId: UUID) async throws -> StreakSummary {

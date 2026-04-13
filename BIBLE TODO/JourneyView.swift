@@ -4,6 +4,7 @@ struct JourneyView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var viewModel: JourneyViewModel
     @State private var sharePayload: ShareDrawerPayload?
+    @State private var selectedBadge: Achievement?
 
     init(viewModel: JourneyViewModel) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -15,28 +16,25 @@ struct JourneyView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    TopBar(
+                        title: "Journey History",
+                        subtitle: nil,
+                        palette: appState.palette,
+                        onShareTap: {
+                            sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
+                            appState.awardFirstShareBadgeIfNeeded()
+                        }
+                    )
+
                     streakCard
                     calendarCard
                     achievementsCard
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
-                .padding(.bottom, 28)
+                .padding(.bottom, 110)
             }
             .safeAreaPadding(.top, 12)
-        }
-        .navigationTitle("Journey History")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundStyle(appState.palette.primaryText)
-                }
-                .accessibilityLabel("Share")
-            }
         }
         .task {
             await viewModel.loadIfNeeded()
@@ -45,6 +43,15 @@ struct JourneyView: View {
             ShareDrawerSheet(payload: payload, palette: appState.palette)
                 .presentationDetents([.height(520), .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $selectedBadge) { badge in
+            BadgeDetailSheet(
+                achievement: badge,
+                unlocked: viewModel.isBadgeEarned(badge),
+                palette: appState.palette
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -100,25 +107,39 @@ struct JourneyView: View {
     private var achievementsCard: some View {
         CardContainer(palette: appState.palette) {
             VStack(alignment: .leading, spacing: 16) {
-                Text("ACHIEVEMENT ICONS")
+                Text("ACHIEVEMENTS")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(appState.palette.primaryText)
 
-                Text("Unlock spiritual icons as you build your streak. Add them to your home screen.")
+                Text("Earn badges by building streaks and sharing God's word.")
                     .font(.subheadline)
                     .foregroundStyle(appState.palette.secondaryText)
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: 4), spacing: 18) {
-                    ForEach(viewModel.achievements) { achievement in
-                        AchievementBadgeView(
-                            achievement: achievement,
-                            unlocked: achievement.isUnlocked(for: viewModel.summary.currentStreak),
-                            palette: appState.palette
-                        )
+                    ForEach(sortedAchievements.prefix(4)) { achievement in
+                        Button {
+                            selectedBadge = achievement
+                        } label: {
+                            AchievementBadgeView(
+                                achievement: achievement,
+                                unlocked: viewModel.isBadgeEarned(achievement),
+                                palette: appState.palette
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
         }
+    }
+
+    /// Earned badges first (by weight ascending), then locked badges by weight ascending.
+    private var sortedAchievements: [Achievement] {
+        let earned = viewModel.achievements.filter { viewModel.isBadgeEarned($0) }
+            .sorted { $0.weight < $1.weight }
+        let locked = viewModel.achievements.filter { !viewModel.isBadgeEarned($0) }
+            .sorted { $0.weight < $1.weight }
+        return earned + locked
     }
 
     private func statItem(title: String, value: String, icon: String) -> some View {
