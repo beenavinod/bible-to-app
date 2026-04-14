@@ -1,20 +1,85 @@
 # --- Xcode ---
-## User-specific
+
+## User-specific Xcode data
 xcuserdata/
 *.xcuserstate
+*.xcscmblueprint
+*.xccheckout
 
 ## Build output
 build/
 DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
 
-## Swift Package Manager caches
+## Xcode indexing and logs
+IndexStores/
+*.moved-aside
+*.hmap
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+## Swift Package Manager
 .build/
 .swiftpm/
 
-# --- Secrets ---
-# Local Supabase credentials (copy from Secrets.example.xcconfig)
+# --- Secrets & Credentials ---
+
 Config/Secrets.xcconfig
 
 # --- macOS ---
+
 .DS_Store
+**/.DS_Store
 *.swp
+*~
+._*
+.Spotlight-V100
+.Trashes
+
+# --- IDE & Editor ---
+
+## VS Code / Cursor
+.vscode/
+*.code-workspace
+
+## JetBrains (AppCode)
+.idea/
+
+## Vim
+*.swp
+*.swo
+*~
+
+# --- Archives & Exports ---
+
+*.xcarchive
+*.appstoreconnect/
+
+# --- Code Coverage & Profiling ---
+
+*.gcno
+*.gcda
+*.profraw
+*.profdata
+codecov/
+*.xcresult
+
+# --- Provisioning Profiles ---
+
+*.mobileprovision
+*.provisionprofile
+
+# --- Fastlane ---
+
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# --- CocoaPods (not used, but prevents accidental commits) ---
+
+Pods/

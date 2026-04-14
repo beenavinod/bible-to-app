@@ -1,10 +1,3 @@
-//
-//  VerseTaskWidgetBundle.swift
-//  VerseTaskWidget
-//
-//  Created by Beena Vinod on 11/04/26.
-//
-
 import WidgetKit
 import SwiftUI
 
@@ -12,7 +5,5 @@ import SwiftUI
 struct VerseTaskWidgetBundle: WidgetBundle {
     var body: some Widget {
         VerseTaskWidget()
-        VerseTaskWidgetControl()
-        VerseTaskWidgetLiveActivity()
     }
 }
