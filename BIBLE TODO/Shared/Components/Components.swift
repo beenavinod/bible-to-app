@@ -333,6 +333,8 @@ struct WeekProgressView: View {
 struct AchievementBadgeView: View {
     let achievement: Achievement
     let unlocked: Bool
+    /// Highlight when this badge is the one chosen for the Lock Screen accessory widget.
+    var isLockScreenSelected: Bool = false
     let palette: AppThemePalette
 
     private var subtitle: String {
@@ -386,6 +388,17 @@ struct AchievementBadgeView: View {
                         .offset(x: -4, y: -4)
                 }
             }
+            .overlay(alignment: .topLeading) {
+                if unlocked, isLockScreenSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(palette.accent)
+                        .shadow(color: palette.card, radius: 0, x: 0, y: 0)
+                        .shadow(color: palette.card, radius: 1, x: 0, y: 0)
+                        .accessibilityLabel("Selected for Lock Screen widget")
+                        .offset(x: 2, y: 2)
+                }
+            }
     }
 
     private var badgeLabel: some View {
@@ -407,7 +420,10 @@ struct AchievementBadgeView: View {
 struct BadgeDetailSheet: View {
     let achievement: Achievement
     let unlocked: Bool
+    var isLockScreenSelected: Bool = false
     let palette: AppThemePalette
+    var onSelectForLockScreen: () -> Void = {}
+    var onClearLockScreenSelection: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -471,7 +487,13 @@ struct BadgeDetailSheet: View {
                 }
                 .padding(.horizontal, 32)
 
-                Spacer(minLength: 32)
+                if unlocked {
+                    lockScreenWidgetSection
+                        .padding(.horizontal, 28)
+                        .padding(.top, 8)
+                }
+
+                Spacer(minLength: 24)
 
                 if unlocked {
                     HStack(spacing: 6) {
@@ -500,6 +522,53 @@ struct BadgeDetailSheet: View {
             }
             .toolbarBackground(palette.card.opacity(0.92), for: .navigationBar)
         }
+    }
+
+    @ViewBuilder
+    private var lockScreenWidgetSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Lock Screen widget")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(palette.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.8)
+
+            if isLockScreenSelected {
+                Label("Using on Lock Screen", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(palette.accent)
+
+                Text("This badge appears when you add the Bible Life Lock Screen widget.")
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    onClearLockScreenSelection()
+                    dismiss()
+                } label: {
+                    Label("Remove from Lock Screen widget", systemImage: "iphone.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.bordered)
+                .tint(palette.secondaryText)
+            } else {
+                Button {
+                    onSelectForLockScreen()
+                    dismiss()
+                } label: {
+                    Label("Use for Lock Screen widget", systemImage: "iphone.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(palette.headerAccent)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var badgeTypeLabel: String {

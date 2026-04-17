@@ -222,6 +222,7 @@ final class AppState: ObservableObject {
         mainTabViewModels = nil
         service = SignedOutBibleService()
         authSessionRevision += 1
+        persistence.setLockScreenWidgetBadgeId(nil)
         hasCompletedOnboarding = persistence.hasCompletedOnboarding()
         rootPhase = supabaseClient != nil ? .needsAuth : .configurationRequired
         WidgetCenter.shared.reloadAllTimelines()

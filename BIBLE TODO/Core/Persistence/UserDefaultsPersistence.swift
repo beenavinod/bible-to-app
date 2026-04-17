@@ -12,6 +12,7 @@ final class UserDefaultsPersistence: AppPersistence {
         static let bibleReaderTheme = "bibleReaderTheme"
         static let bibleReaderFontScale = "bibleReaderFontScale"
         static let bibleReaderLineSpacingExtra = "bibleReaderLineSpacingExtra"
+        static let lockScreenWidgetBadgeId = "lockScreenWidgetBadgeId"
     }
 
     private let defaults: UserDefaults
@@ -130,5 +131,20 @@ final class UserDefaultsPersistence: AppPersistence {
 
     func setBibleReaderLineSpacingExtra(_ value: Double) {
         defaults.set(min(max(value, 0), 18), forKey: Key.bibleReaderLineSpacingExtra)
+    }
+
+    func lockScreenWidgetBadgeId() -> Int? {
+        guard let object = defaults.object(forKey: Key.lockScreenWidgetBadgeId) else { return nil }
+        if let n = object as? NSNumber { return n.intValue }
+        if let i = object as? Int { return i }
+        return nil
+    }
+
+    func setLockScreenWidgetBadgeId(_ id: Int?) {
+        if let id {
+            defaults.set(id, forKey: Key.lockScreenWidgetBadgeId)
+        } else {
+            defaults.removeObject(forKey: Key.lockScreenWidgetBadgeId)
+        }
     }
 }

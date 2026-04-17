@@ -48,7 +48,10 @@ struct JourneyView: View {
             BadgeDetailSheet(
                 achievement: badge,
                 unlocked: viewModel.isBadgeEarned(badge),
-                palette: appState.palette
+                isLockScreenSelected: viewModel.lockScreenWidgetBadgeId == badge.id,
+                palette: appState.palette,
+                onSelectForLockScreen: { viewModel.setLockScreenWidgetBadgeId(badge.id) },
+                onClearLockScreenSelection: { viewModel.setLockScreenWidgetBadgeId(nil) }
             )
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
@@ -111,7 +114,7 @@ struct JourneyView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(appState.palette.primaryText)
 
-                Text("Earn badges by building streaks and sharing God's word.")
+                Text("Earn badges by building streaks and sharing. Tap one to choose which unlocked badge appears on the Lock Screen widget.")
                     .font(.subheadline)
                     .foregroundStyle(appState.palette.secondaryText)
 
@@ -123,6 +126,7 @@ struct JourneyView: View {
                             AchievementBadgeView(
                                 achievement: achievement,
                                 unlocked: viewModel.isBadgeEarned(achievement),
+                                isLockScreenSelected: viewModel.lockScreenWidgetBadgeId == achievement.id,
                                 palette: appState.palette
                             )
                         }

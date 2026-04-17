@@ -9,6 +9,8 @@ final class JourneyViewModel: ObservableObject {
     @Published private(set) var summary = StreakSummary(currentStreak: 0, longestStreak: 0, totalCompletedDays: 0)
     @Published private(set) var achievements: [Achievement] = []
     @Published private(set) var earnedBadgeIds: Set<Int> = []
+    /// Achievement id used for the Lock Screen accessory widget (`nil` until the user picks one).
+    @Published private(set) var lockScreenWidgetBadgeId: Int?
     @Published var isCalendarExpanded = true
     @Published var displayedMonth: Date = .now
 
@@ -19,6 +21,7 @@ final class JourneyViewModel: ObservableObject {
     init(service: BibleService, persistence: AppPersistence) {
         self.service = service
         self.persistence = persistence
+        lockScreenWidgetBadgeId = persistence.lockScreenWidgetBadgeId()
     }
 
     func loadIfNeeded() async {
@@ -46,6 +49,24 @@ final class JourneyViewModel: ObservableObject {
         earnedBadgeIds.contains(achievement.id)
     }
 
+    /// Persists the badge shown on the Lock Screen widget (must be earned). Pass `nil` to clear.
+    func setLockScreenWidgetBadgeId(_ id: Int?) {
+        if let id, !earnedBadgeIds.contains(id) { return }
+        persistence.setLockScreenWidgetBadgeId(id)
+        lockScreenWidgetBadgeId = id
+        syncBadgeWidget()
+    }
+
+    private func reconcileLockScreenBadgeSelection() {
+        guard let id = lockScreenWidgetBadgeId else { return }
+        let stillValid = earnedBadgeIds.contains(id) && achievements.contains(where: { $0.id == id })
+        guard stillValid else {
+            persistence.setLockScreenWidgetBadgeId(nil)
+            lockScreenWidgetBadgeId = nil
+            return
+        }
+    }
+
     func load() async {
         do {
             async let history = service.fetchHistory()
@@ -59,6 +80,7 @@ final class JourneyViewModel: ObservableObject {
             earnedBadgeIds = (try? await earned) ?? []
             records = loadedRecords.map(applyCompletionState)
             recalculateSummary()
+            reconcileLockScreenBadgeSelection()
             syncWidgetData()
         } catch {
             if records.isEmpty {
@@ -111,17 +133,16 @@ final class JourneyViewModel: ObservableObject {
     private func syncStreakWidget() {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
-        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
-        let symbols = ["S", "M", "T", "W", "T", "F", "S"]
 
-        let weekDays: [SharedWeekDay] = (0..<7).map { offset in
-            let day = calendar.date(byAdding: .day, value: offset, to: startOfWeek) ?? today
+        /// Latest five calendar days ending today (oldest → newest). Labels use **day-of-month** so the row reads as actual dates, not a Sun–Sat week strip.
+        let weekDays: [SharedWeekDay] = (0..<5).map { index in
+            let dayOffset = index - 4
+            let day = calendar.date(byAdding: .day, value: dayOffset, to: today) ?? today
             let completed = records.contains { record in
                 record.completed && calendar.isDate(record.verse.date, inSameDayAs: day)
             }
-            let weekdayIndex = calendar.component(.weekday, from: day) - 1
-            let symbol = symbols[weekdayIndex]
-            return SharedWeekDay(symbol: symbol, isCompleted: completed)
+            let label = day.formatted(.dateTime.day(.defaultDigits))
+            return SharedWeekDay(symbol: label, isCompleted: completed)
         }
 
         WidgetDataStore.writeStreak(SharedStreakData(
@@ -134,18 +155,33 @@ final class JourneyViewModel: ObservableObject {
     }
 
     private func syncBadgeWidget() {
-        let earned = achievements
-            .filter { earnedBadgeIds.contains($0.id) }
-            .sorted { $0.weight < $1.weight }
-            .map { badge in
+        let entries: [SharedBadgeEntry]
+        if let id = lockScreenWidgetBadgeId,
+           earnedBadgeIds.contains(id),
+           let badge = achievements.first(where: { $0.id == id }) {
+            entries = [
                 SharedBadgeEntry(
                     symbolName: badge.symbolName,
                     title: badge.name,
-                    milestone: "\(badge.actionsRequired)d"
+                    milestone: Self.widgetMilestoneLabel(for: badge)
                 )
-            }
+            ]
+        } else {
+            entries = []
+        }
 
-        WidgetDataStore.writeBadges(SharedBadgeData(badges: earned))
+        WidgetDataStore.writeBadges(SharedBadgeData(badges: entries))
         WidgetCenter.shared.reloadTimelines(ofKind: "LockScreenIconWidget")
+    }
+
+    private static func widgetMilestoneLabel(for achievement: Achievement) -> String {
+        switch achievement.type {
+        case .taskStreak:
+            "\(achievement.actionsRequired)d"
+        case .verseShare:
+            "\(achievement.actionsRequired)×"
+        case .firstShare:
+            "1st"
+        }
     }
 }

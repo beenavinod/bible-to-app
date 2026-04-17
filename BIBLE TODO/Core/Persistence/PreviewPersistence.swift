@@ -28,6 +28,7 @@ final class PreviewPersistence: AppPersistence {
     private var bibleTheme: BibleReaderTheme = .mist
     private var bibleFontScale: Double = 1.0
     private var bibleLineExtra: Double = 2
+    private var lockScreenBadgeId: Int?
 
     func bibleReaderTheme() -> BibleReaderTheme { bibleTheme }
     func setBibleReaderTheme(_ theme: BibleReaderTheme) { bibleTheme = theme }
@@ -35,4 +36,7 @@ final class PreviewPersistence: AppPersistence {
     func setBibleReaderFontScale(_ value: Double) { bibleFontScale = value }
     func bibleReaderLineSpacingExtra() -> Double { bibleLineExtra }
     func setBibleReaderLineSpacingExtra(_ value: Double) { bibleLineExtra = value }
+
+    func lockScreenWidgetBadgeId() -> Int? { lockScreenBadgeId }
+    func setLockScreenWidgetBadgeId(_ id: Int?) { lockScreenBadgeId = id }
 }
