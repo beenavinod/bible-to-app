@@ -9,9 +9,9 @@ final class MockBibleService: BibleService {
         records = MockBibleService.makeRecords()
     }
 
-    func fetchTodayVerse() async throws -> Verse {
+    func fetchTodayDailyRecord() async throws -> DailyRecord {
         try await Task.sleep(for: .milliseconds(120))
-        return records.first(where: { calendar.isDateInToday($0.verse.date) })?.verse ?? records[0].verse
+        return records.first(where: { calendar.isDateInToday($0.verse.date) }) ?? records[0]
     }
 
     func fetchHistory() async throws -> [DailyRecord] {

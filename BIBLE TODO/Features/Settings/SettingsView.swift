@@ -66,7 +66,7 @@ struct SettingsView: View {
                             Text("Home background")
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(appState.palette.primaryText)
-                            Text("Wallpaper for the Today tab only.")
+                            Text("Solid light color for the Today tab only.")
                                 .font(.subheadline)
                                 .foregroundStyle(appState.palette.secondaryText)
                         }

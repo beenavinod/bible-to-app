@@ -1,7 +1,8 @@
 import Foundation
 
 protocol BibleService {
-    func fetchTodayVerse() async throws -> Verse
+    /// Today’s row from `loadDailyContent` (creates `user_tasks` when missing), including the real `user_tasks.id`.
+    func fetchTodayDailyRecord() async throws -> DailyRecord
     func fetchHistory() async throws -> [DailyRecord]
     func fetchStreakSummary() async throws -> StreakSummary
     func fetchBadgeDefinitions() async throws -> [Achievement]

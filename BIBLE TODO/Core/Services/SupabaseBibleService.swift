@@ -44,9 +44,9 @@ final class SupabaseBibleService: BibleService {
         self.repository = repository
     }
 
-    func fetchTodayVerse() async throws -> Verse {
+    func fetchTodayDailyRecord() async throws -> DailyRecord {
         let cache = try await repository.loadDailyContent(userId: userId, category: category)
-        return cache.toDailyRecord().verse
+        return cache.toDailyRecord()
     }
 
     func fetchHistory() async throws -> [DailyRecord] {

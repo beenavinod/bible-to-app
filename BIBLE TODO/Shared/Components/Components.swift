@@ -24,10 +24,111 @@ struct HomeWallpaperBackgroundView: View {
     let wallpaper: HomeWallpaper
 
     var body: some View {
-        Image(wallpaper.assetName)
-            .resizable()
-            .scaledToFill()
-            .ignoresSafeArea()
+        Group {
+            if let gradient = wallpaper.homeLinearGradient {
+                gradient
+            } else {
+                wallpaper.solidBackgroundColor
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+/// Circular press-and-hold control for the Home “today’s task” card (incomplete / in progress / done).
+struct HomePressHoldCircleView: View {
+    let progress: Double
+    let isCompleted: Bool
+    let isInteractive: Bool
+    let primaryText: Color
+    let secondaryText: Color
+    let accent: Color
+    let accentSoft: Color
+
+    let onPress: () -> Void
+    let onRelease: () -> Void
+
+    private let diameter: CGFloat = 108
+    private let ringWidth: CGFloat = 4
+
+    private var inProgress: Bool {
+        isInteractive && !isCompleted && progress > 0 && progress < 1
+    }
+
+    var body: some View {
+        let gesture = DragGesture(minimumDistance: 0)
+            .onChanged { _ in
+                guard isInteractive, !isCompleted else { return }
+                onPress()
+            }
+            .onEnded { _ in
+                guard isInteractive, !isCompleted else { return }
+                onRelease()
+            }
+
+        VStack(spacing: 8) {
+            ZStack {
+                if isCompleted {
+                    Circle()
+                        .fill(Color(red: 0.55, green: 0.68, blue: 0.58))
+                        .frame(width: diameter, height: diameter)
+                        .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3)
+
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 34, weight: .bold))
+                        .foregroundStyle(.white)
+                } else if inProgress {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color(red: 0.99, green: 0.99, blue: 0.98),
+                                    accentSoft.opacity(0.55),
+                                ],
+                                center: .center,
+                                startRadius: 4,
+                                endRadius: diameter * 0.55
+                            )
+                        )
+                        .frame(width: diameter, height: diameter)
+                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(accent, style: StrokeStyle(lineWidth: ringWidth, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: diameter - ringWidth, height: diameter - ringWidth)
+
+                    Image(systemName: "hand.tap.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(primaryText.opacity(0.85))
+                } else {
+                    Circle()
+                        .fill(accentSoft.opacity(0.35))
+                        .frame(width: diameter, height: diameter)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.black.opacity(0.12), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
+
+                    Image(systemName: "hand.tap.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(primaryText.opacity(0.85))
+                }
+            }
+            .contentShape(Circle())
+            .gesture(gesture)
+
+            Text(isCompleted ? "Completed" : "Press and hold to complete")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(isCompleted ? primaryText : secondaryText)
+                .multilineTextAlignment(.center)
+                .frame(width: diameter + 8)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isCompleted ? "Completed" : "Press and hold to complete today’s task")
     }
 }
 

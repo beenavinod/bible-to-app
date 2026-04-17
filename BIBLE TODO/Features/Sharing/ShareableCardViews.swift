@@ -57,148 +57,150 @@ private struct ShareThemedCanvas: View {
     }
 }
 
-// MARK: - Verse + task (verse-task widget style: left verse, right task column)
+// MARK: - Verse share template (gradient card, home copy without icons)
+
+private enum ShareVerseExportTheme {
+    /// Dusty blue → warm peach, similar to the reference share template.
+    static let cardGradient = LinearGradient(
+        colors: [
+            Color(red: 0.54, green: 0.63, blue: 0.76),
+            Color(red: 0.78, green: 0.76, blue: 0.80),
+            Color(red: 0.98, green: 0.87, blue: 0.76),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let outerPad: CGFloat = 36
+    static let cardCorner: CGFloat = 44
+    static let ink = Color.white
+    static let inkMuted = Color.white.opacity(0.9)
+    static let inkSoft = Color.white.opacity(0.82)
+    static let pillFill = Color.white.opacity(0.26)
+    static let pillStroke = Color.white.opacity(0.42)
+}
 
 struct ShareableVerseCardLayout: View {
     let record: DailyRecord
     let palette: AppThemePalette
 
-    private let pad = ShareExportLayout.horizontalPadding
+    private let side = ShareExportLayout.side
+    private let hPad: CGFloat = 52
 
     var body: some View {
+        let _ = palette
+
         ZStack {
-            ShareThemedCanvas(palette: palette)
+            Color(red: 0.96, green: 0.95, blue: 0.93)
+                .frame(width: side, height: side)
 
-            VStack(alignment: .leading, spacing: 0) {
-                header
+            RoundedRectangle(cornerRadius: ShareVerseExportTheme.cardCorner, style: .continuous)
+                .fill(ShareVerseExportTheme.cardGradient)
+                .padding(ShareVerseExportTheme.outerPad)
+                .shadow(color: Color.black.opacity(0.12), radius: 24, x: 0, y: 14)
+                .overlay {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 28)
 
-                Spacer(minLength: 20)
+                        verseBlock
 
-                verseAndTaskRow
+                        Spacer(minLength: 32)
 
-                Spacer(minLength: 16)
+                        taskCopyBlock
 
-                footer
-            }
-            .padding(.horizontal, pad)
-            .padding(.vertical, 44)
-        }
-        .frame(width: ShareExportLayout.side, height: ShareExportLayout.side)
-    }
+                        Spacer(minLength: 28)
 
-    private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Bible Life")
-                    .font(.system(size: 22, weight: .semibold, design: .serif))
-                    .foregroundStyle(palette.primaryText)
-                Text("Live the Word")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(palette.secondaryText)
-            }
-            Spacer(minLength: 8)
-            Text(record.verse.date, format: .dateTime.month(.abbreviated).day().year())
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(palette.secondaryText)
-        }
-    }
+                        brandingPill
 
-    private var verseAndTaskRow: some View {
-        HStack(alignment: .top, spacing: 20) {
-            verseColumn
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            taskColumn
-                .frame(width: ShareExportLayout.side * 0.34)
-        }
-    }
-
-    private var verseColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("DAILY VERSE")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(palette.secondaryText)
-
-            Text("\"\(record.verse.text)\"")
-                .font(.system(size: 26, weight: .medium, design: .serif))
-                .foregroundStyle(palette.primaryText)
-                .lineSpacing(7)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .layoutPriority(1)
-                .minimumScaleFactor(0.72)
-                .lineLimit(12)
-
-            Text(record.verse.reference)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(palette.accent)
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(palette.card.opacity(0.92))
-                .shadow(color: palette.shadow.opacity(0.5), radius: 12, y: 6)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(palette.border.opacity(0.65), lineWidth: 1)
-        )
-    }
-
-    private var taskColumn: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(palette.card.opacity(0.55))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(palette.border.opacity(0.75), lineWidth: 1)
-            )
-            .overlay(alignment: .topLeading) {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(palette.canvas.opacity(0.95))
-                            .frame(width: 40, height: 40)
-                            .overlay {
-                                Image(systemName: record.verse.symbolName)
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(palette.accent)
-                            }
-
-                        Text("TODAY'S TASK")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(palette.secondaryText)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.8)
+                        Spacer(minLength: 36)
                     }
-
-                    Text(record.verse.taskTitle)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-                        .lineLimit(4)
-                        .minimumScaleFactor(0.8)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(record.verse.taskDescription)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                        .lineSpacing(3)
-                        .lineLimit(6)
-                        .minimumScaleFactor(0.85)
-                        .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, hPad)
+                    .padding(.vertical, 40)
                 }
-                .padding(16)
-            }
+        }
+        .frame(width: side, height: side)
     }
 
-    private var footer: some View {
-        Text("Bible Life · Live the Word")
-            .font(.system(size: 15, weight: .medium))
-            .foregroundStyle(palette.secondaryText.opacity(0.9))
-            .frame(maxWidth: .infinity)
-            .multilineTextAlignment(.center)
+    private var verseBlock: some View {
+        VStack(spacing: 18) {
+            Text("\"\(record.verse.text)\"")
+                .font(.system(size: 34, weight: .medium, design: .default))
+                .foregroundStyle(ShareVerseExportTheme.ink)
+                .multilineTextAlignment(.center)
+                .lineSpacing(8)
+                .minimumScaleFactor(0.68)
+                .lineLimit(14)
+                .shadow(color: Color.black.opacity(0.12), radius: 0, x: 0, y: 1)
+
+            Text("— \(record.verse.reference)")
+                .font(.system(size: 22, weight: .semibold, design: .default))
+                .foregroundStyle(ShareVerseExportTheme.inkMuted)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.8)
+                .lineLimit(3)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Same wording as the home task card, without SF Symbol chrome.
+    private var taskCopyBlock: some View {
+        VStack(spacing: 14) {
+            Text("TODAY'S ACTION")
+                .font(.system(size: 14, weight: .bold))
+                .tracking(0.9)
+                .foregroundStyle(ShareVerseExportTheme.inkSoft)
+
+            Text(record.verse.taskTitle)
+                .font(.system(size: 26, weight: .semibold, design: .default))
+                .foregroundStyle(ShareVerseExportTheme.ink)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.78)
+                .lineLimit(4)
+
+            Text(record.verse.taskDescription)
+                .font(.system(size: 19, weight: .regular, design: .default))
+                .foregroundStyle(ShareVerseExportTheme.inkMuted)
+                .multilineTextAlignment(.center)
+                .lineSpacing(5)
+                .minimumScaleFactor(0.82)
+                .lineLimit(8)
+
+            if !record.verse.taskQuote.isEmpty {
+                Text("“\(record.verse.taskQuote)”")
+                    .font(.system(size: 17, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(ShareVerseExportTheme.inkSoft)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
+                    .lineLimit(4)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var brandingPill: some View {
+        HStack(spacing: 12) {
+            Image("LaunchLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            Text("Bible Life")
+                .font(.system(size: 20, weight: .semibold, design: .default))
+                .foregroundStyle(ShareVerseExportTheme.ink)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(
+            Capsule(style: .continuous)
+                .fill(ShareVerseExportTheme.pillFill)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(ShareVerseExportTheme.pillStroke, lineWidth: 1)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.1), radius: 6, x: 0, y: 3)
     }
 }
 

@@ -47,7 +47,7 @@ enum AppBackground: String, CaseIterable, Codable {
     }
 }
 
-/// Full-bleed wallpapers for the Home tab only (`Assets.xcassets` `HomeWallpaper01` … `09`).
+/// Light solid fills and soft vertical gradients for the Home tab.
 enum HomeWallpaper: String, CaseIterable, Codable {
     case w1
     case w2
@@ -58,53 +58,157 @@ enum HomeWallpaper: String, CaseIterable, Codable {
     case w7
     case w8
     case w9
+    case w10
+    case g1
+    case g2
+    case g3
+    case g4
+    case g5
+    case g6
 
     static let defaultWallpaper = HomeWallpaper.w1
 
-    var assetName: String {
+    var displayName: String {
         switch self {
-        case .w1: "HomeWallpaper01"
-        case .w2: "HomeWallpaper02"
-        case .w3: "HomeWallpaper03"
-        case .w4: "HomeWallpaper04"
-        case .w5: "HomeWallpaper05"
-        case .w6: "HomeWallpaper06"
-        case .w7: "HomeWallpaper07"
-        case .w8: "HomeWallpaper08"
-        case .w9: "HomeWallpaper09"
+        case .w1: "Warm cream"
+        case .w2: "Lavender mist"
+        case .w3: "Mint wash"
+        case .w4: "Peach glow"
+        case .w5: "Ice blue"
+        case .w6: "Pale sage"
+        case .w7: "Blush shell"
+        case .w8: "Soft butter"
+        case .w9: "Sea glass"
+        case .w10: "Pearl gray"
+        case .g1: "Sky to peach"
+        case .g2: "Lilac to cream"
+        case .g3: "Mint to butter"
+        case .g4: "Rose to shell"
+        case .g5: "Periwinkle mist"
+        case .g6: "Sage to linen"
         }
     }
 
-    /// Text / chrome on the Home screen (independent of `AppTheme` palette).
-    var homeForeground: HomeForegroundStyle {
+    /// Full-bleed solid fill, or the **top** stop of a gradient (for previews / fallbacks).
+    var solidBackgroundColor: Color {
         switch self {
-        case .w1, .w2, .w3, .w4, .w6:
-            HomeForegroundStyle(
-                primary: Color(red: 0.08, green: 0.07, blue: 0.06),
-                secondary: Color(red: 0.08, green: 0.07, blue: 0.06).opacity(0.78),
-                tertiary: Color(red: 0.08, green: 0.07, blue: 0.06).opacity(0.52),
-                glassStroke: Color.black.opacity(0.12),
-                legibilityShadow: Color.white.opacity(0.9),
-                iconBackdrop: Color.white.opacity(0.58),
-                taskCardFill: Color.white.opacity(0.82),
-                taskHoldTrackFill: Color.black.opacity(0.07),
-                taskCardShadow: Color.black.opacity(0.18),
-                prefersLightStatusBar: false
+        case .w1:
+            Color(red: 0.98, green: 0.96, blue: 0.91)
+        case .w2:
+            Color(red: 0.95, green: 0.94, blue: 0.99)
+        case .w3:
+            Color(red: 0.92, green: 0.97, blue: 0.94)
+        case .w4:
+            Color(red: 0.99, green: 0.94, blue: 0.92)
+        case .w5:
+            Color(red: 0.93, green: 0.97, blue: 1.0)
+        case .w6:
+            Color(red: 0.93, green: 0.96, blue: 0.90)
+        case .w7:
+            Color(red: 0.99, green: 0.93, blue: 0.94)
+        case .w8:
+            Color(red: 0.99, green: 0.97, blue: 0.88)
+        case .w9:
+            Color(red: 0.90, green: 0.97, blue: 0.97)
+        case .w10:
+            Color(red: 0.94, green: 0.95, blue: 0.97)
+        case .g1:
+            Color(red: 0.76, green: 0.82, blue: 0.88)
+        case .g2:
+            Color(red: 0.90, green: 0.88, blue: 0.97)
+        case .g3:
+            Color(red: 0.86, green: 0.94, blue: 0.90)
+        case .g4:
+            Color(red: 0.97, green: 0.86, blue: 0.89)
+        case .g5:
+            Color(red: 0.84, green: 0.87, blue: 0.98)
+        case .g6:
+            Color(red: 0.86, green: 0.92, blue: 0.87)
+        }
+    }
+
+    /// When non-`nil`, use this instead of `solidBackgroundColor` for the full-screen Home backdrop.
+    var homeLinearGradient: LinearGradient? {
+        switch self {
+        case .w1, .w2, .w3, .w4, .w5, .w6, .w7, .w8, .w9, .w10:
+            nil
+        case .g1:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.76, green: 0.82, blue: 0.88),
+                    Color(red: 0.92, green: 0.88, blue: 0.84),
+                    Color(red: 0.99, green: 0.90, blue: 0.80),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
             )
-        case .w5, .w7, .w8, .w9:
-            HomeForegroundStyle(
-                primary: .white,
-                secondary: Color.white.opacity(0.88),
-                tertiary: Color.white.opacity(0.62),
-                glassStroke: Color.white.opacity(0.4),
-                legibilityShadow: Color.black.opacity(0.65),
-                iconBackdrop: Color.white.opacity(0.22),
-                taskCardFill: Color.white.opacity(0.16),
-                taskHoldTrackFill: Color.white.opacity(0.22),
-                taskCardShadow: Color.black.opacity(0.45),
-                prefersLightStatusBar: true
+        case .g2:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.90, green: 0.88, blue: 0.97),
+                    Color(red: 0.97, green: 0.95, blue: 0.99),
+                    Color(red: 0.99, green: 0.97, blue: 0.94),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .g3:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.86, green: 0.94, blue: 0.90),
+                    Color(red: 0.94, green: 0.97, blue: 0.88),
+                    Color(red: 0.99, green: 0.96, blue: 0.88),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .g4:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.97, green: 0.86, blue: 0.89),
+                    Color(red: 0.99, green: 0.91, blue: 0.90),
+                    Color(red: 0.99, green: 0.94, blue: 0.92),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .g5:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.84, green: 0.87, blue: 0.98),
+                    Color(red: 0.91, green: 0.93, blue: 0.99),
+                    Color(red: 0.95, green: 0.96, blue: 0.99),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .g6:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.86, green: 0.92, blue: 0.87),
+                    Color(red: 0.93, green: 0.95, blue: 0.90),
+                    Color(red: 0.97, green: 0.96, blue: 0.91),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
             )
         }
+    }
+
+    /// Text / chrome on the Home screen (always dark on these light fills).
+    var homeForeground: HomeForegroundStyle {
+        HomeForegroundStyle(
+            primary: Color(red: 0.11, green: 0.11, blue: 0.12),
+            secondary: Color(red: 0.11, green: 0.11, blue: 0.12).opacity(0.62),
+            tertiary: Color(red: 0.11, green: 0.11, blue: 0.12).opacity(0.42),
+            glassStroke: Color.black.opacity(0.1),
+            legibilityShadow: Color.white.opacity(0.35),
+            iconBackdrop: Color.white.opacity(0.72),
+            taskCardFill: Color(red: 0.99, green: 0.98, blue: 0.97),
+            taskHoldTrackFill: Color.black.opacity(0.06),
+            taskCardShadow: Color.black.opacity(0.12),
+            prefersLightStatusBar: false
+        )
     }
 }
 
@@ -113,7 +217,7 @@ struct HomeForegroundStyle {
     let secondary: Color
     let tertiary: Color
     let glassStroke: Color
-    /// Halo behind glyphs on top of photography (improves contrast without a text box).
+    /// Subtle halo behind glyphs on busy or tinted fills.
     let legibilityShadow: Color
     /// Squircle fill behind toolbar icons (not `Material`, so it doesn't follow system appearance).
     let iconBackdrop: Color

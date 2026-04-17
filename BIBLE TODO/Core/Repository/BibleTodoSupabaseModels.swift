@@ -82,6 +82,40 @@ struct VerseContent: Decodable, Sendable {
         case displayOrder = "display_order"
         case isActive = "is_active"
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        text = try c.decode(String.self, forKey: .text)
+        reference = try c.decode(String.self, forKey: .reference)
+        book = try Self.decodeStringOrEmpty(c, forKey: .book)
+        chapter = try Self.decodeIntFlex(c, forKey: .chapter) ?? 0
+        verseStart = try Self.decodeIntFlex(c, forKey: .verseStart) ?? 1
+        verseEnd = try Self.decodeIntFlex(c, forKey: .verseEnd)
+        translation = try Self.decodeStringOrEmpty(c, forKey: .translation, default: "WEB")
+        displayOrder = try Self.decodeIntFlex(c, forKey: .displayOrder) ?? 0
+        isActive = try Self.decodeBoolFlex(c, forKey: .isActive) ?? true
+    }
+
+    private static func decodeStringOrEmpty(_ c: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys, default def: String = "") throws -> String {
+        if let s = try c.decodeIfPresent(String.self, forKey: key) { return s }
+        if let i = try c.decodeIfPresent(Int.self, forKey: key) { return String(i) }
+        return def
+    }
+
+    private static func decodeIntFlex(_ c: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) throws -> Int? {
+        if let v = try c.decodeIfPresent(Int.self, forKey: key) { return v }
+        if let d = try c.decodeIfPresent(Double.self, forKey: key) { return Int(d) }
+        if let s = try c.decodeIfPresent(String.self, forKey: key) {
+            return Int(s.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return nil
+    }
+
+    private static func decodeBoolFlex(_ c: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) throws -> Bool? {
+        if let b = try c.decodeIfPresent(Bool.self, forKey: key) { return b }
+        if let i = try c.decodeIfPresent(Int.self, forKey: key) { return i != 0 }
+        return nil
+    }
 }
 
 struct VerseResponse: Decodable, Sendable {
@@ -95,6 +129,31 @@ struct VerseTaskWithVerse: Decodable, Sendable {
     let description: String
     let category: String
     let verses: VerseResponse
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, description, category, verses
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        category = try c.decodeIfPresent(String.self, forKey: .category) ?? "default"
+        verses = try Self.decodeVersesEmbedded(c)
+    }
+
+    /// PostgREST usually returns one joined `verses` row as an object; some responses use a single-element array.
+    private static func decodeVersesEmbedded(_ c: KeyedDecodingContainer<CodingKeys>) throws -> VerseResponse {
+        if let one = try? c.decode(VerseResponse.self, forKey: .verses) {
+            return one
+        }
+        var nested = try c.nestedUnkeyedContainer(forKey: .verses)
+        if nested.isAtEnd {
+            throw DecodingError.dataCorruptedError(forKey: .verses, in: c, debugDescription: "verses embed is empty")
+        }
+        return try nested.decode(VerseResponse.self)
+    }
 }
 
 typealias VerseTaskCandidate = VerseTaskWithVerse
@@ -111,6 +170,26 @@ struct UserTaskWithDetails: Decodable, Sendable {
         case assignedDate = "assigned_date"
         case completedAt = "completed_at"
         case verseTasks = "verse_tasks"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        assignedDate = try c.decode(String.self, forKey: .assignedDate)
+        status = try c.decode(String.self, forKey: .status)
+        completedAt = try c.decodeIfPresent(String.self, forKey: .completedAt)
+        verseTasks = try Self.decodeVerseTasksEmbedded(c)
+    }
+
+    private static func decodeVerseTasksEmbedded(_ c: KeyedDecodingContainer<CodingKeys>) throws -> VerseTaskWithVerse {
+        if let one = try? c.decode(VerseTaskWithVerse.self, forKey: .verseTasks) {
+            return one
+        }
+        var nested = try c.nestedUnkeyedContainer(forKey: .verseTasks)
+        if nested.isAtEnd {
+            throw DecodingError.dataCorruptedError(forKey: .verseTasks, in: c, debugDescription: "verse_tasks embed is empty")
+        }
+        return try nested.decode(VerseTaskWithVerse.self)
     }
 }
 

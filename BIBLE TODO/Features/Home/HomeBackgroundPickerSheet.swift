@@ -36,6 +36,11 @@ struct HomeBackgroundPickerSheet: View {
                 .font(.system(.title2, design: .serif, weight: .bold))
                 .foregroundStyle(titleBrown)
                 .padding(.top, 14)
+                .padding(.bottom, 6)
+
+            Text("Light solids and soft gradients keep verse text and icons black for easy reading.")
+                .font(.footnote)
+                .foregroundStyle(titleBrown.opacity(0.72))
                 .padding(.bottom, 18)
 
             ScrollView {
@@ -62,42 +67,35 @@ struct HomeBackgroundPickerSheet: View {
                 dismiss()
             }
         } label: {
-            GeometryReader { geo in
-                ZStack {
-                    Image(wallpaper.assetName)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .clipped()
+            VStack(alignment: .leading, spacing: 8) {
+                ZStack(alignment: .bottomLeading) {
+                    Group {
+                        if let gradient = wallpaper.homeLinearGradient {
+                            gradient
+                        } else {
+                            wallpaper.solidBackgroundColor
+                        }
+                    }
 
                     Text("Aa")
-                        .font(.system(size: 28, weight: .bold, design: .serif))
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 1)
-
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Text("Free")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(titleBrown.opacity(0.85))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Capsule().fill(Color.white.opacity(0.82)))
-                                .padding(8)
-                        }
-                        Spacer()
-                    }
+                        .font(.system(size: 26, weight: .bold, design: .serif))
+                        .foregroundStyle(Color(red: 0.12, green: 0.12, blue: 0.12))
+                        .padding(12)
                 }
-                .frame(width: geo.size.width, height: geo.size.height)
+                .aspectRatio(1, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.black.opacity(selected ? 0.28 : 0.08), lineWidth: selected ? 2.5 : 1)
+                )
+                .shadow(color: .black.opacity(0.08), radius: 5, x: 0, y: 2)
+
+                Text(wallpaper.displayName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(titleBrown.opacity(0.88))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
             }
-            .aspectRatio(2 / 3, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.white, lineWidth: selected ? 3 : 0)
-            )
-            .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
         }
         .buttonStyle(.plain)
     }

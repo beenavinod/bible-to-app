@@ -36,16 +36,23 @@ final class HomeViewModel: ObservableObject {
 
     func load() async {
         do {
-            async let todayVerse = service.fetchTodayVerse()
+            async let todayRecord = service.fetchTodayDailyRecord()
             async let history = service.fetchHistory()
-            let verse = try await todayVerse
+            let today = try await todayRecord
             historyCache = try await history
-            rebuildDayMap(todayVerse: verse)
+            rebuildDayMap(todayRecord: today)
             focusedDayIndex = min(focusedDayIndex, max(0, orderedDayStarts.count - 1))
             applyDisplayedRecord()
             updateNavigationFlags()
-            syncVerseTaskWidget(verse: verse)
+            syncVerseTaskWidget(verse: today.verse)
         } catch {
+            #if DEBUG
+            if let decoding = error as? DecodingError {
+                print("HomeViewModel.load DecodingError: \(decoding.detailedDescription)")
+            } else {
+                print("HomeViewModel.load failed: \(error.localizedDescription)")
+            }
+            #endif
             recordsByDay = [:]
             orderedDayStarts = []
             displayedRecord = nil
@@ -112,20 +119,16 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    private func rebuildDayMap(todayVerse: Verse) {
+    private func rebuildDayMap(todayRecord: DailyRecord) {
         let cal = Calendar.current
         var map: [Date: DailyRecord] = [:]
         for r in historyCache {
             let d = cal.startOfDay(for: r.verse.date)
             map[d] = applyCompletionState(to: r)
         }
-        let todayStart = cal.startOfDay(for: todayVerse.date)
-        if let matched = historyCache.first(where: { cal.isDate($0.verse.date, inSameDayAs: todayVerse.date) }) {
-            map[todayStart] = applyCompletionState(to: matched)
-        } else {
-            let synthetic = DailyRecord(id: UUID(), verse: todayVerse, completed: false)
-            map[todayStart] = applyCompletionState(to: synthetic)
-        }
+        let todayStart = cal.startOfDay(for: todayRecord.verse.date)
+        /// `fetchTodayDailyRecord` already ran `loadDailyContent` (find-or-create). Use that row as source of truth so `DailyRecord.id` stays the real `user_tasks` id even when history omits today.
+        map[todayStart] = applyCompletionState(to: todayRecord)
         recordsByDay = map
         orderedDayStarts = map.keys.sorted(by: >)
     }
@@ -200,3 +203,22 @@ final class HomeViewModel: ObservableObject {
         WidgetCenter.shared.reloadTimelines(ofKind: "VerseTaskWidget")
     }
 }
+
+#if DEBUG
+extension DecodingError {
+    fileprivate var detailedDescription: String {
+        switch self {
+        case .keyNotFound(let key, let ctx):
+            "keyNotFound(\(key.stringValue)) path=\(ctx.codingPath.map(\.stringValue).joined(separator: ".")) \(ctx.debugDescription)"
+        case .typeMismatch(let type, let ctx):
+            "typeMismatch(\(type)) path=\(ctx.codingPath.map(\.stringValue).joined(separator: ".")) \(ctx.debugDescription)"
+        case .valueNotFound(let type, let ctx):
+            "valueNotFound(\(type)) path=\(ctx.codingPath.map(\.stringValue).joined(separator: ".")) \(ctx.debugDescription)"
+        case .dataCorrupted(let ctx):
+            "dataCorrupted path=\(ctx.codingPath.map(\.stringValue).joined(separator: ".")) \(ctx.debugDescription)"
+        @unknown default:
+            String(describing: self)
+        }
+    }
+}
+#endif

@@ -10,6 +10,9 @@ private struct HomeScrollMinYPreferenceKey: PreferenceKey {
 private let taskAccentGreen = Color(red: 0.16, green: 0.58, blue: 0.36)
 private let taskAccentGreenSoft = Color(red: 0.16, green: 0.58, blue: 0.36).opacity(0.18)
 
+/// Matches `topChromeRow` + inset padding for scroll `minHeight` math (see `safeAreaInset` below).
+private let homeTopChromeLayoutHeight: CGFloat = 56
+
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var viewModel: HomeViewModel
@@ -34,73 +37,72 @@ struct HomeView: View {
             HomeWallpaperBackgroundView(wallpaper: appState.homeWallpaper)
 
             GeometryReader { geo in
-                let safeTop = geo.safeAreaInsets.top
                 let safeBottom = geo.safeAreaInsets.bottom
-                let topChromeH: CGFloat = 56
-                let bottomIconsH: CGFloat = 56
-                let topInset = safeTop + topChromeH + 6
-                let bottomScrollPadding = bottomIconsH + safeBottom + 20
-                /// Room for compact task card under centered verse.
-                let taskCompact: CGFloat = 148
-                let verseMinH = max(
-                    100,
-                    geo.size.height - topInset - bottomScrollPadding - taskCompact - 16
+                let chromeButtonSide: CGFloat = 48
+                /// Tighter than full home-indicator inset so the row sits closer to the screen edge (still above a small floor).
+                let bottomChromeOuter: CGFloat = max(safeBottom - 10, 6)
+                let bottomChromeTop = bottomChromeOuter + chromeButtonSide
+                /// `GeometryReader` is already laid out inside the screen safe rectangle; `.safeAreaInset` adds the header without stacking `safeAreaInsets.top` again (which caused the large gap under the Dynamic Island).
+                let middleBandMinHeight = max(
+                    120,
+                    geo.size.height - homeTopChromeLayoutHeight - bottomChromeTop
                 )
 
-                ZStack(alignment: .top) {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            Color.clear
-                                .frame(height: 0)
-                                .background(scrollOffsetReader)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: 0)
+                            .background(scrollOffsetReader)
 
-                            VStack {
-                                Spacer(minLength: 0)
-                                if let record = viewModel.displayedRecord {
-                                    verseSection(record: record)
-                                } else {
-                                    homeEmptyState
-                                }
-                                Spacer(minLength: 0)
-                            }
-                            .frame(minHeight: verseMinH)
+                        VStack(spacing: 0) {
+                            Spacer(minLength: 0)
 
                             if let record = viewModel.displayedRecord {
-                                taskSection(record: record)
-                                    .padding(.top, 16)
+                                VStack(spacing: 0) {
+                                    verseSection(record: record)
+                                    taskSection(record: record)
+                                        .padding(.top, 28)
+                                }
+                            } else {
+                                homeEmptyState
                             }
 
-                            Color.clear
-                                .frame(height: bottomScrollPadding)
+                            Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 22)
-                        .padding(.top, topInset)
-                    }
-                    .scrollIndicators(.hidden)
-                    .coordinateSpace(name: "homeScroll")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .onPreferenceChange(HomeScrollMinYPreferenceKey.self) { minY in
-                        if minY > 56 {
-                            if !didTriggerPullPreviousDay, viewModel.canGoToOlderDay {
-                                didTriggerPullPreviousDay = true
-                                viewModel.goToOlderDay()
-                            }
-                        } else if minY < 12 {
-                            didTriggerPullPreviousDay = false
-                        }
-                    }
+                        .frame(minHeight: middleBandMinHeight)
+                        .padding(.horizontal, 20)
 
-                    topChromeRow
-                        .padding(.top, safeTop + 4)
+                        Color.clear.frame(height: bottomChromeTop)
+                    }
                 }
-                .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
+                .scrollIndicators(.hidden)
+                .coordinateSpace(name: "homeScroll")
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    topChromeRow
+                        .padding(.top, 4)
+                        .padding(.bottom, 4)
+                }
+                .onPreferenceChange(HomeScrollMinYPreferenceKey.self) { minY in
+                    if minY > 56 {
+                        if !didTriggerPullPreviousDay, viewModel.canGoToOlderDay {
+                            didTriggerPullPreviousDay = true
+                            viewModel.goToOlderDay()
+                        }
+                    } else if minY < 12 {
+                        didTriggerPullPreviousDay = false
+                    }
+                }
                 .overlay(alignment: .bottom) {
                     bottomChromeRow
-                        .padding(.bottom, max(safeBottom, 10))
+                        .padding(.bottom, bottomChromeOuter)
                 }
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        /// Removes the invisible navigation chrome that still consumes vertical space when only using `.toolbar(.hidden)`.
+        .toolbarBackground(.hidden, for: .navigationBar)
         .task {
             await viewModel.loadIfNeeded()
         }
@@ -186,7 +188,7 @@ struct HomeView: View {
                 Color.clear.frame(width: 48, height: 48)
             }
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 20)
     }
 
     private func chromeSquircleButton(
@@ -247,82 +249,105 @@ struct HomeView: View {
     }
 
     private func taskSection(record: DailyRecord) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("TODAY'S ACTION")
-                    .font(.caption2.weight(.bold))
-                    .tracking(0.8)
-                    .foregroundStyle(fg.secondary)
+        let symbol = record.verse.symbolName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let taskIcon = symbol.isEmpty ? "book.closed.fill" : symbol
+
+        return HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: taskIcon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(fg.primary)
+                    .frame(width: 28, height: 28, alignment: .leading)
+
                 Text(record.verse.taskTitle)
-                    .font(.headline.weight(.semibold))
+                    .font(.system(.headline, design: .default, weight: .semibold))
                     .foregroundStyle(fg.primary)
                     .fixedSize(horizontal: false, vertical: true)
+
                 Text(record.verse.taskDescription)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(fg.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if !record.verse.taskQuote.isEmpty {
+                    Text(record.verse.taskQuote)
+                        .font(.caption.italic())
+                        .foregroundStyle(fg.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if viewModel.isViewingToday && record.completed {
+                    Text("Tomorrow brings a fresh verse and task.")
+                        .font(.caption)
+                        .foregroundStyle(fg.secondary)
+                        .padding(.top, 2)
+                } else if !viewModel.isViewingToday && !record.completed {
+                    Text("Past day — view only")
+                        .font(.caption)
+                        .foregroundStyle(fg.secondary)
+                        .padding(.top, 2)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(record.verse.taskQuote)
-                .font(.caption2.italic())
-                .foregroundStyle(fg.tertiary)
-
-            if viewModel.isViewingToday {
-                if record.completed {
-                    taskCompletedBanner
-                } else {
-                    HoldToCompleteBar(
+            Group {
+                if viewModel.isViewingToday {
+                    HomePressHoldCircleView(
                         progress: viewModel.holdProgress,
+                        isCompleted: record.completed,
+                        isInteractive: !record.completed,
+                        primaryText: fg.primary,
                         secondaryText: fg.secondary,
-                        trackFill: fg.taskHoldTrackFill,
-                        fillColor: taskAccentGreen,
-                        isCompleted: false,
+                        accent: taskAccentGreen,
+                        accentSoft: taskAccentGreenSoft,
                         onPress: viewModel.startHold,
                         onRelease: viewModel.cancelHold
                     )
+                } else if record.completed {
+                    HomePressHoldCircleView(
+                        progress: 1,
+                        isCompleted: true,
+                        isInteractive: false,
+                        primaryText: fg.primary,
+                        secondaryText: fg.secondary,
+                        accent: taskAccentGreen,
+                        accentSoft: taskAccentGreenSoft,
+                        onPress: {},
+                        onRelease: {}
+                    )
+                } else {
+                    VStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(fg.taskHoldTrackFill)
+                                .frame(width: 108, height: 108)
+                                .overlay(
+                                    Circle()
+                                        .stroke(fg.glassStroke, lineWidth: 1)
+                                )
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 26, weight: .semibold))
+                                .foregroundStyle(fg.secondary)
+                        }
+                        Text("View only")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(fg.secondary)
+                    }
                 }
-            } else {
-                Text("Past day — view only")
-                    .font(.caption)
-                    .foregroundStyle(fg.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
             }
+            .padding(.top, 2)
         }
-        .padding(14)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 18)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(fg.taskCardFill)
-                .shadow(color: fg.taskCardShadow, radius: 8, x: 0, y: 4)
+                .shadow(color: fg.taskCardShadow, radius: 10, x: 0, y: 4)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(fg.glassStroke.opacity(0.85), lineWidth: 1)
         )
-    }
-
-    private var taskCompletedBanner: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(taskAccentGreenSoft)
-                    .frame(width: 44, height: 44)
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 26))
-                    .foregroundStyle(taskAccentGreen)
-                    .symbolRenderingMode(.hierarchical)
-            }
-
-            Text("Done for today")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(fg.primary)
-            Text("Tomorrow brings a fresh verse and task.")
-                .font(.caption)
-                .foregroundStyle(fg.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
     }
 
     private var homeEmptyState: some View {
