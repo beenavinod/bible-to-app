@@ -12,39 +12,48 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var didCompleteTask = false
     @Published private(set) var canGoToOlderDay = false
     @Published private(set) var canGoToNewerDay = false
+    /// True until the first `loadIfNeeded` finishes (success or failure), or while a cancelled first load is waiting to retry.
+    @Published private(set) var isLoadingInitialContent = true
 
     private let service: BibleService
     private let persistence: AppPersistence
+    private let onJourneyDataShouldRefresh: (() async -> Void)?
     private var historyCache: [DailyRecord] = []
     private var recordsByDay: [Date: DailyRecord] = [:]
     private var orderedDayStarts: [Date] = []
     private var completionTask: Task<Void, Never>?
     private var didLoadOnce = false
 
-    init(service: BibleService, persistence: AppPersistence) {
+    init(service: BibleService, persistence: AppPersistence, onJourneyDataShouldRefresh: (() async -> Void)? = nil) {
         self.service = service
         self.persistence = persistence
+        self.onJourneyDataShouldRefresh = onJourneyDataShouldRefresh
     }
 
     var isViewingToday: Bool { focusedDayIndex == 0 }
 
     func loadIfNeeded() async {
-        guard !didLoadOnce else { return }
-        didLoadOnce = true
+        guard !didLoadOnce else {
+            isLoadingInitialContent = false
+            return
+        }
         await load()
     }
 
     func load() async {
+        isLoadingInitialContent = true
         do {
-            async let todayRecord = service.fetchTodayDailyRecord()
-            async let history = service.fetchHistory()
-            let today = try await todayRecord
-            historyCache = try await history
+            let today = try await service.fetchTodayDailyRecord()
+            historyCache = (try? await service.fetchHistory()) ?? []
             rebuildDayMap(todayRecord: today)
             focusedDayIndex = min(focusedDayIndex, max(0, orderedDayStarts.count - 1))
             applyDisplayedRecord()
             updateNavigationFlags()
             syncVerseTaskWidget(verse: today.verse)
+            didLoadOnce = true
+            isLoadingInitialContent = false
+        } catch is CancellationError {
+            isLoadingInitialContent = true
         } catch {
             #if DEBUG
             if let decoding = error as? DecodingError {
@@ -58,6 +67,8 @@ final class HomeViewModel: ObservableObject {
             displayedRecord = nil
             canGoToOlderDay = false
             canGoToNewerDay = false
+            didLoadOnce = true
+            isLoadingInitialContent = false
         }
     }
 
@@ -175,6 +186,7 @@ final class HomeViewModel: ObservableObject {
                 assignedDateISO: dateISO,
                 completed: true
             )
+            await onJourneyDataShouldRefresh?()
         }
         WidgetCenter.shared.reloadTimelines(ofKind: "VerseTaskWidget")
     }

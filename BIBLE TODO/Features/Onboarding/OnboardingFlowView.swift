@@ -1122,7 +1122,10 @@ private struct OnboardingNameScreen: View {
             .offset(y: showContent ? 0 : 20)
 
             VStack(spacing: 16) {
-                TextField("Your name", text: $name)
+                TextField("", text: $name, prompt: Text("Your name").foregroundStyle(palette.secondaryText.opacity(0.85)))
+                    .font(.body)
+                    .foregroundStyle(palette.primaryText)
+                    .tint(palette.accent)
                     .padding(.horizontal, 20)
                     .frame(height: 58)
                     .background(palette.card)

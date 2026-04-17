@@ -1,62 +1,76 @@
 import SwiftUI
 
+private let detailTaskAccent = Color(red: 0.16, green: 0.58, blue: 0.36)
+private let detailTaskAccentSoft = Color(red: 0.16, green: 0.58, blue: 0.36).opacity(0.18)
+
 struct DailyRecordDetailView: View {
     @EnvironmentObject private var appState: AppState
     let record: DailyRecord
 
+    private var fg: HomeForegroundStyle {
+        appState.homeWallpaper.homeForeground
+    }
+
+    private var isRecordToday: Bool {
+        Calendar.current.isDate(record.verse.date, inSameDayAs: Date())
+    }
+
     var body: some View {
         ZStack {
-            AppBackgroundView(background: appState.background)
+            HomeWallpaperBackgroundView(wallpaper: appState.homeWallpaper)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    TopBar(
-                        title: record.verse.title,
-                        subtitle: record.verse.date.formatted(.dateTime.weekday(.wide).month(.wide).day()),
-                        palette: appState.palette,
-                        showsBackButton: true
-                    )
-
-                    CardContainer(palette: appState.palette) {
-                        VStack(spacing: 16) {
-                            Text("\"\(record.verse.text)\"")
-                                .font(.system(.title3, design: .serif))
-                                .multilineTextAlignment(.center)
-                                .foregroundStyle(appState.palette.primaryText)
-                                .lineSpacing(6)
-
-                            Text("— \(record.verse.reference)")
-                                .font(.headline)
-                                .foregroundStyle(appState.palette.secondaryText)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                    }
-
-                    CardContainer(palette: appState.palette) {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("TODAY'S ACTION")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(appState.palette.secondaryText)
-                            Text(record.verse.taskTitle)
-                                .font(.title2.weight(.semibold))
-                                .foregroundStyle(appState.palette.primaryText)
-                            Text(record.verse.taskDescription)
-                                .font(.subheadline)
-                                .foregroundStyle(appState.palette.secondaryText)
-                            Text(record.verse.taskQuote)
-                                .font(.footnote.italic())
-                                .foregroundStyle(appState.palette.secondaryText)
-                            Label(record.completed ? "Completed" : "Not completed", systemImage: record.completed ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(record.completed ? appState.palette.accent : appState.palette.secondaryText)
-                        }
-                    }
+                VStack(spacing: 0) {
+                    HomeDayVerseSection(record: record, fg: fg)
+                    detailTaskCard
+                        .padding(.top, 28)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 12)
+                .padding(.top, 16)
                 .padding(.bottom, 40)
             }
-            .safeAreaPadding(.top, 12)
+        }
+        .navigationTitle(record.verse.date.formatted(date: .abbreviated, time: .omitted))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+    }
+
+    private var detailTaskCard: some View {
+        HomeDayTaskCard(record: record, fg: fg, isViewingToday: isRecordToday) {
+            Group {
+                if record.completed {
+                    HomePressHoldCircleView(
+                        progress: 1,
+                        isCompleted: true,
+                        isInteractive: false,
+                        primaryText: fg.primary,
+                        secondaryText: fg.secondary,
+                        accent: detailTaskAccent,
+                        accentSoft: detailTaskAccentSoft,
+                        onPress: {},
+                        onRelease: {}
+                    )
+                } else {
+                    VStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(fg.taskHoldTrackFill)
+                                .frame(width: 108, height: 108)
+                                .overlay(
+                                    Circle()
+                                        .stroke(fg.glassStroke, lineWidth: 1)
+                                )
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 26, weight: .semibold))
+                                .foregroundStyle(fg.secondary)
+                        }
+                        Text("View only")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(fg.secondary)
+                    }
+                }
+            }
+            .padding(.top, 2)
         }
     }
 }

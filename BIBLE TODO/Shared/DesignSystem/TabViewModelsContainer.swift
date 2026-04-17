@@ -7,7 +7,10 @@ final class TabViewModelsContainer {
     let journey: JourneyViewModel
 
     init(service: BibleService, persistence: AppPersistence) {
-        home = HomeViewModel(service: service, persistence: persistence)
-        journey = JourneyViewModel(service: service, persistence: persistence)
+        let journeyVM = JourneyViewModel(service: service, persistence: persistence)
+        journey = journeyVM
+        home = HomeViewModel(service: service, persistence: persistence) {
+            await journeyVM.load()
+        }
     }
 }

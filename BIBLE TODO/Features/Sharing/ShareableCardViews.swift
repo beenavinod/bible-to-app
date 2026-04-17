@@ -13,13 +13,13 @@ private enum ShareExportLayout {
 // MARK: - Payload
 
 enum ShareDrawerPayload: Identifiable, Equatable {
-    case verse(DailyRecord)
+    case verse(DailyRecord, wallpaper: HomeWallpaper)
     case streak(StreakSummary, week: [DailyRecord?])
 
     var id: String {
         switch self {
-        case .verse(let r):
-            return "v-\(r.id.uuidString)"
+        case .verse(let r, let wallpaper):
+            return "v-\(r.id.uuidString)-\(wallpaper.rawValue)"
         case .streak(let s, let week):
             let bits = week.map { $0?.completed == true ? "1" : "0" }.joined()
             return "s-\(s.currentStreak)-\(s.longestStreak)-\(bits)"
@@ -57,150 +57,77 @@ private struct ShareThemedCanvas: View {
     }
 }
 
-// MARK: - Verse share template (gradient card, home copy without icons)
-
-private enum ShareVerseExportTheme {
-    /// Dusty blue → warm peach, similar to the reference share template.
-    static let cardGradient = LinearGradient(
-        colors: [
-            Color(red: 0.54, green: 0.63, blue: 0.76),
-            Color(red: 0.78, green: 0.76, blue: 0.80),
-            Color(red: 0.98, green: 0.87, blue: 0.76),
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-    )
-
-    static let outerPad: CGFloat = 36
-    static let cardCorner: CGFloat = 44
-    static let ink = Color.white
-    static let inkMuted = Color.white.opacity(0.9)
-    static let inkSoft = Color.white.opacity(0.82)
-    static let pillFill = Color.white.opacity(0.26)
-    static let pillStroke = Color.white.opacity(0.42)
-}
+// MARK: - Verse share template (home wallpaper + verse + white task card + watermark)
 
 struct ShareableVerseCardLayout: View {
     let record: DailyRecord
-    let palette: AppThemePalette
+    let wallpaper: HomeWallpaper
 
     private let side = ShareExportLayout.side
-    private let hPad: CGFloat = 52
+    private var fg: HomeForegroundStyle { wallpaper.homeForeground }
 
     var body: some View {
-        let _ = palette
+        let verseScale: CGFloat = 1.55
+        let taskScale: CGFloat = 1.42
 
         ZStack {
-            Color(red: 0.96, green: 0.95, blue: 0.93)
-                .frame(width: side, height: side)
-
-            RoundedRectangle(cornerRadius: ShareVerseExportTheme.cardCorner, style: .continuous)
-                .fill(ShareVerseExportTheme.cardGradient)
-                .padding(ShareVerseExportTheme.outerPad)
-                .shadow(color: Color.black.opacity(0.12), radius: 24, x: 0, y: 14)
-                .overlay {
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 28)
-
-                        verseBlock
-
-                        Spacer(minLength: 32)
-
-                        taskCopyBlock
-
-                        Spacer(minLength: 28)
-
-                        brandingPill
-
-                        Spacer(minLength: 36)
-                    }
-                    .padding(.horizontal, hPad)
-                    .padding(.vertical, 40)
+            Group {
+                if let gradient = wallpaper.homeLinearGradient {
+                    gradient
+                } else {
+                    wallpaper.solidBackgroundColor
                 }
+            }
+            .frame(width: side, height: side)
+            .clipped()
+
+            VStack(spacing: 0) {
+                Spacer(minLength: 48)
+
+                HomeDayVerseSection(record: record, fg: fg, fontScale: verseScale)
+                    .padding(.horizontal, 44)
+
+                Spacer(minLength: 32)
+
+                HomeDayTaskCardTextOnly(record: record, fg: fg, fontScale: taskScale, isViewingToday: true)
+                    .padding(.horizontal, 48)
+
+                Spacer(minLength: 28)
+
+                ShareVerseWatermark(fg: fg)
+                    .padding(.bottom, 40)
+            }
         }
         .frame(width: side, height: side)
     }
+}
 
-    private var verseBlock: some View {
-        VStack(spacing: 18) {
-            Text("\"\(record.verse.text)\"")
-                .font(.system(size: 34, weight: .medium, design: .default))
-                .foregroundStyle(ShareVerseExportTheme.ink)
-                .multilineTextAlignment(.center)
-                .lineSpacing(8)
-                .minimumScaleFactor(0.68)
-                .lineLimit(14)
-                .shadow(color: Color.black.opacity(0.12), radius: 0, x: 0, y: 1)
+private struct ShareVerseWatermark: View {
+    let fg: HomeForegroundStyle
 
-            Text("— \(record.verse.reference)")
-                .font(.system(size: 22, weight: .semibold, design: .default))
-                .foregroundStyle(ShareVerseExportTheme.inkMuted)
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.8)
-                .lineLimit(3)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    /// Same wording as the home task card, without SF Symbol chrome.
-    private var taskCopyBlock: some View {
-        VStack(spacing: 14) {
-            Text("TODAY'S ACTION")
-                .font(.system(size: 14, weight: .bold))
-                .tracking(0.9)
-                .foregroundStyle(ShareVerseExportTheme.inkSoft)
-
-            Text(record.verse.taskTitle)
-                .font(.system(size: 26, weight: .semibold, design: .default))
-                .foregroundStyle(ShareVerseExportTheme.ink)
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.78)
-                .lineLimit(4)
-
-            Text(record.verse.taskDescription)
-                .font(.system(size: 19, weight: .regular, design: .default))
-                .foregroundStyle(ShareVerseExportTheme.inkMuted)
-                .multilineTextAlignment(.center)
-                .lineSpacing(5)
-                .minimumScaleFactor(0.82)
-                .lineLimit(8)
-
-            if !record.verse.taskQuote.isEmpty {
-                Text("“\(record.verse.taskQuote)”")
-                    .font(.system(size: 17, weight: .regular, design: .serif))
-                    .italic()
-                    .foregroundStyle(ShareVerseExportTheme.inkSoft)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.85)
-                    .lineLimit(4)
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var brandingPill: some View {
-        HStack(spacing: 12) {
+    var body: some View {
+        HStack(spacing: 10) {
             Image("LaunchLogo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(width: 36, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
             Text("Bible Life")
-                .font(.system(size: 20, weight: .semibold, design: .default))
-                .foregroundStyle(ShareVerseExportTheme.ink)
+                .font(.system(size: 18, weight: .semibold, design: .default))
+                .foregroundStyle(fg.primary)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
         .background(
             Capsule(style: .continuous)
-                .fill(ShareVerseExportTheme.pillFill)
+                .fill(fg.taskCardFill.opacity(0.92))
                 .overlay(
                     Capsule(style: .continuous)
-                        .stroke(ShareVerseExportTheme.pillStroke, lineWidth: 1)
+                        .stroke(fg.glassStroke.opacity(0.9), lineWidth: 1)
                 )
         )
-        .shadow(color: Color.black.opacity(0.1), radius: 6, x: 0, y: 3)
+        .shadow(color: fg.taskCardShadow, radius: 8, x: 0, y: 4)
     }
 }
 
@@ -377,8 +304,8 @@ struct ShareableCardPreview: View {
                     let scale = min(geo.size.width / w, geo.size.height / h)
                     Group {
                         switch payload {
-                        case .verse(let record):
-                            ShareableVerseCardLayout(record: record, palette: palette)
+                        case .verse(let record, let wallpaper):
+                            ShareableVerseCardLayout(record: record, wallpaper: wallpaper)
                         case .streak(let summary, let week):
                             ShareableStreakCardLayout(summary: summary, week: week, palette: palette)
                         }
@@ -405,8 +332,8 @@ enum ShareImageRenderer {
     static func render(_ payload: ShareDrawerPayload, palette: AppThemePalette) -> UIImage? {
         let content: AnyView = {
             switch payload {
-            case .verse(let r):
-                return AnyView(ShareableVerseCardLayout(record: r, palette: palette))
+            case .verse(let r, let wallpaper):
+                return AnyView(ShareableVerseCardLayout(record: r, wallpaper: wallpaper))
             case .streak(let s, let w):
                 return AnyView(ShareableStreakCardLayout(summary: s, week: w, palette: palette))
             }
@@ -493,87 +420,104 @@ struct ShareDrawerSheet: View {
     @State private var showSaveAlert = false
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                VStack(spacing: 14) {
-                    Text("Share to Instagram, WhatsApp, Messages, and more.")
-                        .font(.subheadline)
+        VStack(spacing: 0) {
+            shareSheetHeader
+
+            VStack(spacing: 14) {
+                Text("Share to Instagram, WhatsApp, Messages, and more.")
+                    .font(.subheadline)
+                    .foregroundStyle(palette.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+
+                ShareableCardPreview(payload: payload, palette: palette)
+                    .padding(.horizontal, 8)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Share preview")
+
+                if isRendering {
+                    ProgressView("Preparing image…")
+                        .tint(palette.accent)
                         .foregroundStyle(palette.secondaryText)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 8)
-
-                    ShareableCardPreview(payload: payload, palette: palette)
-                        .padding(.horizontal, 8)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Share preview")
-
-                    if isRendering {
-                        ProgressView("Preparing image…")
-                            .tint(palette.accent)
-                            .foregroundStyle(palette.secondaryText)
-                            .padding(.vertical, 4)
-                    }
-                }
-                .padding(.top, 8)
-                .padding(.bottom, 16)
-
-                Spacer(minLength: 0)
-
-                VStack(spacing: 12) {
-                    SharePaletteButton(
-                        title: "Share",
-                        systemImage: "square.and.arrow.up",
-                        palette: palette,
-                        isPrimary: true
-                    ) {
-                        guard renderedImage != nil else { return }
-                        showActivity = true
-                    }
-                    .disabled(renderedImage == nil)
-                    .opacity(renderedImage == nil ? 0.55 : 1)
-
-                    SharePaletteButton(
-                        title: "Save to Photos",
-                        systemImage: "arrow.down.circle.fill",
-                        palette: palette,
-                        isPrimary: false
-                    ) {
-                        saveToPhotos()
-                    }
-                    .disabled(renderedImage == nil)
-                    .opacity(renderedImage == nil ? 0.55 : 1)
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
-                .padding(.top, 8)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.canvas.ignoresSafeArea())
-            .navigationTitle("Share")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                        .foregroundStyle(palette.accent)
+                        .padding(.vertical, 4)
                 }
             }
-            .toolbarBackground(palette.card.opacity(0.92), for: .navigationBar)
-            .alert("Photos", isPresented: $showSaveAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(saveMessage ?? "")
-            }
-            .sheet(isPresented: $showActivity) {
-                if let renderedImage {
-                    ShareActivityView(items: [renderedImage])
-                        .presentationDetents([.medium, .large])
+            .padding(.top, 8)
+            .padding(.bottom, 16)
+
+            Spacer(minLength: 0)
+
+            VStack(spacing: 12) {
+                SharePaletteButton(
+                    title: "Share",
+                    systemImage: "square.and.arrow.up",
+                    palette: palette,
+                    isPrimary: true
+                ) {
+                    guard renderedImage != nil else { return }
+                    showActivity = true
                 }
+                .disabled(renderedImage == nil)
+                .opacity(renderedImage == nil ? 0.55 : 1)
+
+                SharePaletteButton(
+                    title: "Save to Photos",
+                    systemImage: "arrow.down.circle.fill",
+                    palette: palette,
+                    isPrimary: false
+                ) {
+                    saveToPhotos()
+                }
+                .disabled(renderedImage == nil)
+                .opacity(renderedImage == nil ? 0.55 : 1)
             }
-            .task(id: payload.id) {
-                isRendering = true
-                renderedImage = ShareImageRenderer.render(payload, palette: palette)
-                isRendering = false
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+            .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(palette.canvas.ignoresSafeArea())
+        .alert("Photos", isPresented: $showSaveAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveMessage ?? "")
+        }
+        .sheet(isPresented: $showActivity) {
+            if let renderedImage {
+                ShareActivityView(items: [renderedImage])
+                    .presentationDetents([.medium, .large])
             }
+        }
+        .task(id: payload.id) {
+            isRendering = true
+            renderedImage = ShareImageRenderer.render(payload, palette: palette)
+            isRendering = false
+        }
+    }
+
+    private var shareSheetHeader: some View {
+        ZStack {
+            Text("Share")
+                .font(.headline)
+                .foregroundStyle(palette.primaryText)
+
+            HStack {
+                Button("Done") { dismiss() }
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(palette.primaryText)
+                Spacer()
+                Color.clear
+                    .frame(width: 44, height: 1)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(palette.card)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(palette.border.opacity(0.55))
+                .frame(height: 1)
         }
     }
 

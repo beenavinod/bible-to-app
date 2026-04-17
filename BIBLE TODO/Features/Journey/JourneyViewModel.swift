@@ -61,8 +61,10 @@ final class JourneyViewModel: ObservableObject {
             recalculateSummary()
             syncWidgetData()
         } catch {
-            records = []
-            achievements = BadgeIcons.fallbackCatalog
+            if records.isEmpty {
+                records = []
+                achievements = BadgeIcons.fallbackCatalog
+            }
         }
     }
 

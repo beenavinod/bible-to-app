@@ -10,7 +10,7 @@ struct ContentView: View {
             case .configurationRequired:
                 configurationRequiredView
             case .launching:
-                launchSplash
+                launchSplash(showsProgress: true)
             case .needsAuth:
                 WelcomeAuthView()
                     .environmentObject(appState)
@@ -25,14 +25,15 @@ struct ContentView: View {
                     OnboardingFlowView()
                         .environmentObject(appState)
                 } else {
-                    launchSplash
+                    launchSplash(showsProgress: false)
                 }
             }
         }
     }
 
-    private var launchSplash: some View {
-        ZStack {
+    private func launchSplash(showsProgress: Bool) -> some View {
+        let ink = Color(red: 0.34, green: 0.30, blue: 0.24)
+        return ZStack {
             Color("LaunchBackground")
                 .ignoresSafeArea()
 
@@ -45,7 +46,13 @@ struct ContentView: View {
 
                 Text("Bible Life")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color(red: 0.34, green: 0.30, blue: 0.24))
+                    .foregroundStyle(ink)
+
+                if showsProgress {
+                    ProgressView()
+                        .tint(ink)
+                        .padding(.top, 4)
+                }
             }
         }
     }
@@ -64,19 +71,26 @@ struct ContentView: View {
     }
 
     private func mainChrome(tabs: TabViewModelsContainer) -> some View {
-        NavigationStack(path: $navigationPath) {
-            HomeView(viewModel: tabs.home, path: $navigationPath)
-                .environmentObject(appState)
-                .navigationDestination(for: MainRoute.self) { route in
-                    switch route {
-                    case .journey:
-                        JourneyView(viewModel: tabs.journey)
-                            .environmentObject(appState)
-                    case .settings:
-                        SettingsView(appState: appState)
-                            .environmentObject(appState)
+        ZStack {
+            NavigationStack(path: $navigationPath) {
+                HomeView(viewModel: tabs.home, path: $navigationPath)
+                    .environmentObject(appState)
+                    .navigationDestination(for: MainRoute.self) { route in
+                        switch route {
+                        case .journey:
+                            JourneyView(viewModel: tabs.journey)
+                                .environmentObject(appState)
+                        case .settings:
+                            SettingsView(appState: appState)
+                                .environmentObject(appState)
+                        }
                     }
-                }
+            }
+
+            if tabs.home.isLoadingInitialContent {
+                launchSplash(showsProgress: true)
+                    .transition(.opacity)
+            }
         }
     }
 }

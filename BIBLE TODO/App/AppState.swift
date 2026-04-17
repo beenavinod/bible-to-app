@@ -119,6 +119,7 @@ final class AppState: ObservableObject {
                 }
                 await applySignedInUser(userId: userId, existingProfile: profile)
                 rebuildMainTabViewModels()
+                await preloadMainHomeContent()
                 rootPhase = .main
             }
         } catch {
@@ -151,6 +152,12 @@ final class AppState: ObservableObject {
 
     private func rebuildMainTabViewModels() {
         mainTabViewModels = TabViewModelsContainer(service: service, persistence: persistence)
+    }
+
+    /// Warms today’s verse (and history) before showing the main shell so the first frame is not empty.
+    private func preloadMainHomeContent() async {
+        guard let tabs = mainTabViewModels else { return }
+        await tabs.home.load()
     }
 
     private func useSupabaseService() {
@@ -195,6 +202,7 @@ final class AppState: ObservableObject {
             hasCompletedOnboarding = true
             persistence.setHasCompletedOnboarding(true)
             rebuildMainTabViewModels()
+            await preloadMainHomeContent()
             rootPhase = .main
         } else {
             hasCompletedOnboarding = false
@@ -263,6 +271,7 @@ final class AppState: ObservableObject {
         }
 
         rebuildMainTabViewModels()
+        await preloadMainHomeContent()
         if rootPhase == .onboarding {
             rootPhase = .main
         }

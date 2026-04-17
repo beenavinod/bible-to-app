@@ -57,10 +57,13 @@ struct HomeView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 0)
 
-                            if let record = viewModel.displayedRecord {
+                            if viewModel.isLoadingInitialContent {
+                                Color.clear
+                                    .frame(minHeight: middleBandMinHeight)
+                            } else if let record = viewModel.displayedRecord {
                                 VStack(spacing: 0) {
-                                    verseSection(record: record)
-                                    taskSection(record: record)
+                                    HomeDayVerseSection(record: record, fg: fg)
+                                    homeTaskCard(record: record)
                                         .padding(.top, 28)
                                 }
                             } else {
@@ -228,68 +231,8 @@ struct HomeView: View {
         return Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day())
     }
 
-    private func verseSection(record: DailyRecord) -> some View {
-        VStack(spacing: 14) {
-            Text("\"\(record.verse.text)\"")
-                .font(.system(.title2, design: .serif))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(fg.primary)
-                .lineSpacing(6)
-                .minimumScaleFactor(0.85)
-                .frame(maxWidth: .infinity)
-                .shadow(color: fg.legibilityShadow, radius: 0, x: 0, y: 1)
-                .shadow(color: fg.legibilityShadow.opacity(0.5), radius: 5, x: 0, y: 0)
-
-            Text("— \(record.verse.reference)")
-                .font(.headline)
-                .foregroundStyle(fg.secondary)
-                .shadow(color: fg.legibilityShadow, radius: 0, x: 0, y: 1)
-                .shadow(color: fg.legibilityShadow.opacity(0.45), radius: 4, x: 0, y: 0)
-        }
-    }
-
-    private func taskSection(record: DailyRecord) -> some View {
-        let symbol = record.verse.symbolName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let taskIcon = symbol.isEmpty ? "book.closed.fill" : symbol
-
-        return HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Image(systemName: taskIcon)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(fg.primary)
-                    .frame(width: 28, height: 28, alignment: .leading)
-
-                Text(record.verse.taskTitle)
-                    .font(.system(.headline, design: .default, weight: .semibold))
-                    .foregroundStyle(fg.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(record.verse.taskDescription)
-                    .font(.subheadline)
-                    .foregroundStyle(fg.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if !record.verse.taskQuote.isEmpty {
-                    Text(record.verse.taskQuote)
-                        .font(.caption.italic())
-                        .foregroundStyle(fg.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if viewModel.isViewingToday && record.completed {
-                    Text("Tomorrow brings a fresh verse and task.")
-                        .font(.caption)
-                        .foregroundStyle(fg.secondary)
-                        .padding(.top, 2)
-                } else if !viewModel.isViewingToday && !record.completed {
-                    Text("Past day — view only")
-                        .font(.caption)
-                        .foregroundStyle(fg.secondary)
-                        .padding(.top, 2)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
+    private func homeTaskCard(record: DailyRecord) -> some View {
+        HomeDayTaskCard(record: record, fg: fg, isViewingToday: viewModel.isViewingToday) {
             Group {
                 if viewModel.isViewingToday {
                     HomePressHoldCircleView(
@@ -337,17 +280,6 @@ struct HomeView: View {
             }
             .padding(.top, 2)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 18)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(fg.taskCardFill)
-                .shadow(color: fg.taskCardShadow, radius: 10, x: 0, y: 4)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(fg.glassStroke.opacity(0.85), lineWidth: 1)
-        )
     }
 
     private var homeEmptyState: some View {
@@ -377,7 +309,7 @@ struct HomeView: View {
     private var shareAction: (() -> Void)? {
         guard let record = viewModel.displayedRecord else { return nil }
         return {
-            sharePayload = .verse(record)
+            sharePayload = .verse(record, wallpaper: appState.homeWallpaper)
             appState.awardFirstShareBadgeIfNeeded()
         }
     }
