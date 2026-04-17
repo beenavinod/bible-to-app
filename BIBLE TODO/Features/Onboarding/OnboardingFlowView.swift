@@ -99,7 +99,7 @@ struct OnboardingFlowView: View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.bottom, currentStep == 30 ? 4 : 12)
     }
 
     private var progressValue: CGFloat {
@@ -687,6 +687,8 @@ struct OnboardingFlowView: View {
             buttonIcon: nil,
             topIcon: nil,
             showsFooterContinue: true,
+            titleFont: nil,
+            topScrollSpacer: nil,
             palette: appState.palette,
             card: {
                 AnyView(
@@ -708,7 +710,7 @@ struct OnboardingFlowView: View {
     private func paywallScreen(stepKey: Int) -> some View {
         messageScreen(
             stepKey: stepKey,
-            eyebrow: "Premium",
+            eyebrow: nil,
             title: "Go deeper with Bible Life",
             subtitle: "Subscribe anytime — or continue free and upgrade later in Settings.",
             card: {
@@ -727,7 +729,9 @@ struct OnboardingFlowView: View {
             buttonTitle: "",
             buttonIcon: nil,
             topIcon: nil,
-            showsFooterContinue: false
+            showsFooterContinue: false,
+            titleFont: .system(.title, design: .serif, weight: .semibold),
+            topScrollSpacer: 10
         )
     }
 
@@ -741,7 +745,9 @@ struct OnboardingFlowView: View {
         buttonTitle: String,
         buttonIcon: String? = nil,
         topIcon: String? = nil,
-        showsFooterContinue: Bool = true
+        showsFooterContinue: Bool = true,
+        titleFont: Font? = nil,
+        topScrollSpacer: CGFloat? = nil
     ) -> some View {
         OnboardingMessageScreen(
             stepKey: stepKey,
@@ -753,6 +759,8 @@ struct OnboardingFlowView: View {
             buttonIcon: buttonIcon,
             topIcon: topIcon,
             showsFooterContinue: showsFooterContinue,
+            titleFont: titleFont,
+            topScrollSpacer: topScrollSpacer,
             palette: appState.palette,
             card: { AnyView(card()) },
             onContinue: advance
@@ -1022,16 +1030,26 @@ private struct OnboardingMessageScreen: View {
     let topIcon: String?
     /// When `false`, the paywall supplies its own **Skip** control inside the card.
     let showsFooterContinue: Bool
+    /// When set (e.g. paywall), overrides the default large serif title.
+    let titleFont: Font?
+    /// When set, reduces the top inset below the onboarding progress bar.
+    let topScrollSpacer: CGFloat?
     let palette: AppThemePalette
     let card: () -> AnyView
     let onContinue: () -> Void
 
     @State private var revealCount = 0
 
+    private var resolvedTopSpacer: CGFloat { topScrollSpacer ?? 36 }
+
+    private var resolvedTitleFont: Font {
+        titleFont ?? .system(.largeTitle, design: .serif, weight: .semibold)
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 22) {
-                Spacer(minLength: 36)
+                Spacer(minLength: resolvedTopSpacer)
 
                 if let topIcon {
                     OnboardingIconMoment(symbol: topIcon, palette: palette)
@@ -1048,7 +1066,7 @@ private struct OnboardingMessageScreen: View {
 
                     if let title {
                         Text(title)
-                            .font(.system(.largeTitle, design: .serif, weight: .semibold))
+                            .font(resolvedTitleFont)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(palette.primaryText)
                     }
