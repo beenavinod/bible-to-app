@@ -1,10 +1,3 @@
-//
-//  StreakWidgetBundle.swift
-//  StreakWidget
-//
-//  Created by Beena Vinod on 11/04/26.
-//
-
 import WidgetKit
 import SwiftUI
 
@@ -12,7 +5,5 @@ import SwiftUI
 struct StreakWidgetBundle: WidgetBundle {
     var body: some Widget {
         StreakWidget()
-        StreakWidgetControl()
-        StreakWidgetLiveActivity()
     }
 }
