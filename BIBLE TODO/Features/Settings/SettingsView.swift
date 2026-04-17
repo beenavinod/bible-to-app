@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
     @StateObject private var viewModel: SettingsViewModel
     @State private var showHomeBackgroundPicker = false
 
@@ -19,6 +20,10 @@ struct SettingsView: View {
                         .font(.subheadline)
                         .foregroundStyle(appState.palette.secondaryText)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !subscription.isPremium {
+                        goPremiumCard
+                    }
 
                     widgetCard
                     themeCard
@@ -38,7 +43,41 @@ struct SettingsView: View {
         .sheet(isPresented: $showHomeBackgroundPicker) {
             HomeBackgroundPickerSheet()
                 .environmentObject(appState)
+                .environmentObject(subscription)
                 .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var goPremiumCard: some View {
+        CardContainer(palette: appState.palette) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Go Premium")
+                    .font(.headline)
+                    .foregroundStyle(appState.palette.primaryText)
+                Text("Unlock today’s task, Journey streaks, achievements, and gradient themes.")
+                    .font(.subheadline)
+                    .foregroundStyle(appState.palette.secondaryText)
+                Button {
+                    subscription.presentPaywall()
+                } label: {
+                    Text("See plans")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.white)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [appState.palette.headerAccent, appState.palette.accent],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                )
+            }
         }
     }
 
@@ -126,7 +165,11 @@ struct SettingsView: View {
 
                 ForEach(viewModel.themes, id: \.self) { theme in
                     Button {
-                        viewModel.setTheme(theme)
+                        if theme.isPremiumOnly, !subscription.isPremium {
+                            subscription.presentPaywall()
+                        } else {
+                            viewModel.setTheme(theme)
+                        }
                     } label: {
                         HStack {
                             ThemeSwatchView(
@@ -136,6 +179,11 @@ struct SettingsView: View {
                             )
                             Text(theme.displayName)
                                 .foregroundStyle(appState.palette.primaryText)
+                            if theme.isPremiumOnly, !subscription.isPremium {
+                                Image(systemName: "lock.fill")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(appState.palette.secondaryText)
+                            }
                             Spacer()
                             if theme == viewModel.selectedTheme {
                                 Image(systemName: "checkmark.circle.fill")
@@ -158,7 +206,11 @@ struct SettingsView: View {
 
                 ForEach(viewModel.backgrounds, id: \.self) { background in
                     Button {
-                        viewModel.setBackground(background)
+                        if background.isPremiumOnly, !subscription.isPremium {
+                            subscription.presentPaywall()
+                        } else {
+                            viewModel.setBackground(background)
+                        }
                     } label: {
                         HStack {
                             ThemeSwatchView(
@@ -168,6 +220,11 @@ struct SettingsView: View {
                             )
                             Text(background.displayName)
                                 .foregroundStyle(appState.palette.primaryText)
+                            if background.isPremiumOnly, !subscription.isPremium {
+                                Image(systemName: "lock.fill")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(appState.palette.secondaryText)
+                            }
                             Spacer()
                             if background == viewModel.selectedBackground {
                                 Image(systemName: "checkmark.circle.fill")

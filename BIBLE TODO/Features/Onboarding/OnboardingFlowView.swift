@@ -2,12 +2,14 @@ import SwiftUI
 
 struct OnboardingFlowView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
 
     @State private var currentStep = 0
     @State private var draftName = ""
     @State private var selections: [String: String] = [:]
     @State private var multiSelections: [String: Set<String>] = [:]
     @State private var showBadgeUnlocked = false
+    @State private var onboardingPaywallSelection: PremiumProductID = .annual
 
     /// Flow matches onboarding spec: loader → personalization → Pain–Gap–Truth → … → first task → save → paywall.
     private let totalSteps = 31
@@ -684,6 +686,7 @@ struct OnboardingFlowView: View {
             buttonTitle: "Mark as Complete",
             buttonIcon: nil,
             topIcon: nil,
+            showsFooterContinue: true,
             palette: appState.palette,
             card: {
                 AnyView(
@@ -705,19 +708,26 @@ struct OnboardingFlowView: View {
     private func paywallScreen(stepKey: Int) -> some View {
         messageScreen(
             stepKey: stepKey,
-            eyebrow: nil,
-            title: "Go deeper with Live the Word",
-            subtitle: nil,
+            eyebrow: "Premium",
+            title: "Go deeper with Bible Life",
+            subtitle: "Subscribe anytime — or continue free and upgrade later in Settings.",
             card: {
-                OnboardingHeroCard {
-                    Text("Paywall placeholder — pricing and plans TBD.")
-                        .font(.title3.weight(.medium))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(appState.palette.secondaryText)
-                }
+                AnyView(
+                    PremiumPaywallCore(
+                        selectedProductID: $onboardingPaywallSelection,
+                        compact: true,
+                        showSkipButton: true,
+                        onSkip: advance
+                    )
+                    .environmentObject(subscription)
+                    .environmentObject(appState)
+                )
             },
             footer: nil,
-            buttonTitle: "Continue"
+            buttonTitle: "",
+            buttonIcon: nil,
+            topIcon: nil,
+            showsFooterContinue: false
         )
     }
 
@@ -730,7 +740,8 @@ struct OnboardingFlowView: View {
         footer: String?,
         buttonTitle: String,
         buttonIcon: String? = nil,
-        topIcon: String? = nil
+        topIcon: String? = nil,
+        showsFooterContinue: Bool = true
     ) -> some View {
         OnboardingMessageScreen(
             stepKey: stepKey,
@@ -741,6 +752,7 @@ struct OnboardingFlowView: View {
             buttonTitle: buttonTitle,
             buttonIcon: buttonIcon,
             topIcon: topIcon,
+            showsFooterContinue: showsFooterContinue,
             palette: appState.palette,
             card: { AnyView(card()) },
             onContinue: advance
@@ -1008,6 +1020,8 @@ private struct OnboardingMessageScreen: View {
     let buttonTitle: String
     let buttonIcon: String?
     let topIcon: String?
+    /// When `false`, the paywall supplies its own **Skip** control inside the card.
+    let showsFooterContinue: Bool
     let palette: AppThemePalette
     let card: () -> AnyView
     let onContinue: () -> Void
@@ -1063,14 +1077,16 @@ private struct OnboardingMessageScreen: View {
                         .offset(y: revealCount > 2 ? 0 : 16)
                 }
 
-                OnboardingPrimaryButton(
-                    title: buttonTitle,
-                    systemImage: buttonIcon,
-                    palette: palette,
-                    action: onContinue
-                )
-                .opacity(revealCount > 2 ? 1 : 0)
-                .offset(y: revealCount > 2 ? 0 : 20)
+                if showsFooterContinue {
+                    OnboardingPrimaryButton(
+                        title: buttonTitle,
+                        systemImage: buttonIcon,
+                        palette: palette,
+                        action: onContinue
+                    )
+                    .opacity(revealCount > 2 ? 1 : 0)
+                    .offset(y: revealCount > 2 ? 0 : 20)
+                }
 
                 Spacer(minLength: 34)
             }
@@ -1658,7 +1674,7 @@ private struct OnboardingPrimaryButton: View {
 }
 
 #Preview {
-    AppStatePreviewRoot { _ in
+    AppStatePreviewRoot { _, _ in
         OnboardingFlowView()
     }
 }

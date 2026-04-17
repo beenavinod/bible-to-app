@@ -103,64 +103,93 @@ struct VerseTaskWidgetEntryView: View {
     }
 
     private var mediumWidget: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("DAILY VERSE")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(WidgetPalette.secondaryText)
+        Group {
+            if entry.taskTitle.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("DAILY VERSE")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(WidgetPalette.secondaryText)
 
-                Text("\"\(entry.verseText)\"")
-                    .font(.system(size: 16, weight: .medium, design: .serif))
-                    .foregroundStyle(WidgetPalette.primaryText)
-                    .lineSpacing(4)
-                    .lineLimit(5)
+                    Text("\"\(entry.verseText)\"")
+                        .font(.system(size: 17, weight: .medium, design: .serif))
+                        .foregroundStyle(WidgetPalette.primaryText)
+                        .lineSpacing(4)
+                        .lineLimit(6)
 
-                Text(entry.reference)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(WidgetPalette.accentDark)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(entry.reference)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(WidgetPalette.accentDark)
+                        .lineLimit(2)
 
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.white.opacity(0.42))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(WidgetPalette.border.opacity(0.8), lineWidth: 1)
-                )
-                .overlay {
+                    Spacer(minLength: 0)
+
+                    Text("Open Bible Life to unlock today’s task with Premium.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(WidgetPalette.secondaryText)
+                        .lineLimit(3)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 14) {
                     VStack(alignment: .leading, spacing: 10) {
-                        HStack(alignment: .center, spacing: 10) {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(WidgetPalette.cardAccent)
-                                .frame(width: 34, height: 34)
-                                .overlay {
-                                    Image(systemName: entry.symbolName)
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundStyle(WidgetPalette.accentDark)
+                        Text("DAILY VERSE")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(WidgetPalette.secondaryText)
+
+                        Text("\"\(entry.verseText)\"")
+                            .font(.system(size: 16, weight: .medium, design: .serif))
+                            .foregroundStyle(WidgetPalette.primaryText)
+                            .lineSpacing(4)
+                            .lineLimit(5)
+
+                        Text(entry.reference)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(WidgetPalette.accentDark)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(.white.opacity(0.42))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(WidgetPalette.border.opacity(0.8), lineWidth: 1)
+                        )
+                        .overlay {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack(alignment: .center, spacing: 10) {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(WidgetPalette.cardAccent)
+                                        .frame(width: 34, height: 34)
+                                        .overlay {
+                                            Image(systemName: entry.symbolName)
+                                                .font(.system(size: 15, weight: .semibold))
+                                                .foregroundStyle(WidgetPalette.accentDark)
+                                        }
+
+                                    Text("TODAY'S TASK")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(WidgetPalette.secondaryText)
                                 }
 
-                            Text("TODAY'S TASK")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(WidgetPalette.secondaryText)
+                                Text(entry.taskTitle)
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(WidgetPalette.primaryText)
+                                    .lineLimit(2)
+
+                                Text(entry.taskDescription)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(WidgetPalette.secondaryText)
+                                    .lineSpacing(2)
+                                    .lineLimit(4)
+
+                                Spacer(minLength: 0)
+                            }
+                            .padding(14)
                         }
-
-                        Text(entry.taskTitle)
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(WidgetPalette.primaryText)
-                            .lineLimit(2)
-
-                        Text(entry.taskDescription)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(WidgetPalette.secondaryText)
-                            .lineSpacing(2)
-                            .lineLimit(4)
-
-                        Spacer(minLength: 0)
-                    }
-                    .padding(14)
+                        .frame(width: 126)
                 }
-                .frame(width: 126)
+            }
         }
     }
 }

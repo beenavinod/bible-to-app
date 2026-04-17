@@ -53,6 +53,7 @@ enum WidgetDataStore {
         static let verseTask = "widget_verseTask"
         static let streak = "widget_streak"
         static let badges = "widget_badges"
+        static let premiumUnlocked = "widget_premiumUnlocked"
     }
 
     // MARK: - Verse + Task
@@ -89,6 +90,16 @@ enum WidgetDataStore {
     /// Reads unlocked badge data (returns `nil` when no data has been written).
     static func readBadges() -> SharedBadgeData? {
         read(SharedBadgeData.self, forKey: Key.badges)
+    }
+
+    // MARK: - Premium (verse + task column on medium widget)
+
+    static func writePremiumUnlocked(_ isUnlocked: Bool) {
+        defaults?.set(isUnlocked, forKey: Key.premiumUnlocked)
+    }
+
+    static func readPremiumUnlocked() -> Bool {
+        defaults?.bool(forKey: Key.premiumUnlocked) ?? false
     }
 
     // MARK: - Helpers

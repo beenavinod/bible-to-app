@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var navigationPath = NavigationPath()
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
 
     var body: some View {
         Group {
@@ -17,18 +18,36 @@ struct ContentView: View {
             case .onboarding:
                 OnboardingFlowView()
                     .environmentObject(appState)
+                    .environmentObject(subscription)
             case .main:
                 if appState.hasCompletedOnboarding, let tabs = appState.mainTabViewModels {
                     mainChrome(tabs: tabs)
                         .id(appState.authSessionRevision)
+                        .sheet(isPresented: paywallBinding) {
+                            PremiumPaywallView()
+                                .environmentObject(subscription)
+                                .environmentObject(appState)
+                                .presentationDetents([.large])
+                                .presentationDragIndicator(.visible)
+                        }
                 } else if !appState.hasCompletedOnboarding {
                     OnboardingFlowView()
                         .environmentObject(appState)
+                        .environmentObject(subscription)
                 } else {
                     launchSplash(showsProgress: false)
                 }
             }
         }
+    }
+
+    private var paywallBinding: Binding<Bool> {
+        Binding(
+            get: { subscription.isPresentingPaywall },
+            set: { newValue in
+                if !newValue { subscription.dismissPaywall() }
+            }
+        )
     }
 
     private func launchSplash(showsProgress: Bool) -> some View {
@@ -96,7 +115,7 @@ struct ContentView: View {
 }
 
 #Preview {
-    AppStatePreviewRoot { _ in
+    AppStatePreviewRoot { _, _ in
         ContentView()
     }
 }
@@ -104,14 +123,16 @@ struct ContentView: View {
 /// Single `AppState` instance for previews so `StateObject` / `EnvironmentObject` stay in sync.
 struct AppStatePreviewRoot<Content: View>: View {
     @StateObject private var appState = AppState(swiftUIPreviewPersistence: PreviewPersistence())
-    @ViewBuilder private let content: (AppState) -> Content
+    @StateObject private var subscription = SubscriptionManager()
+    @ViewBuilder private let content: (AppState, SubscriptionManager) -> Content
 
-    init(@ViewBuilder content: @escaping (AppState) -> Content) {
+    init(@ViewBuilder content: @escaping (AppState, SubscriptionManager) -> Content) {
         self.content = content
     }
 
     var body: some View {
-        content(appState)
+        content(appState, subscription)
             .environmentObject(appState)
+            .environmentObject(subscription)
     }
 }
