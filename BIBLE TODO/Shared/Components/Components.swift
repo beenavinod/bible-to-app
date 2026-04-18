@@ -871,29 +871,6 @@ struct WidgetPreviewCard: View {
     }
 }
 
-struct ThemeSwatchView: View {
-    let colors: [Color]
-    let isSelected: Bool
-    let palette: AppThemePalette
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(Array(colors.enumerated()), id: \.offset) { _, color in
-                Circle()
-                    .fill(color)
-                    .frame(width: 18, height: 18)
-            }
-        }
-        .padding(10)
-        .background(palette.card.opacity(isSelected ? 1 : 0.7))
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .stroke(isSelected ? palette.accent : palette.border, lineWidth: 1)
-        )
-    }
-}
-
 struct EmptyStateView: View {
     let title: String
     let subtitle: String

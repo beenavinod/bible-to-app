@@ -4,7 +4,6 @@ struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var subscription: SubscriptionManager
     @StateObject private var viewModel: SettingsViewModel
-    @State private var showHomeBackgroundPicker = false
 
     init(appState: AppState) {
         _viewModel = StateObject(wrappedValue: SettingsViewModel(appState: appState))
@@ -26,11 +25,7 @@ struct SettingsView: View {
                     }
 
                     widgetCard
-                    themeCard
-                    homeBackgroundRow
-                    backgroundCard
                     accountCard
-                    placeholderCard
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
@@ -40,12 +35,6 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showHomeBackgroundPicker) {
-            HomeBackgroundPickerSheet()
-                .environmentObject(appState)
-                .environmentObject(subscription)
-                .presentationDragIndicator(.visible)
-        }
     }
 
     private var goPremiumCard: some View {
@@ -77,47 +66,6 @@ struct SettingsView: View {
                             )
                         )
                 )
-            }
-        }
-    }
-
-    private var homeBackgroundRow: some View {
-        CardContainer(palette: appState.palette) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Home")
-                    .font(.headline)
-                    .foregroundStyle(appState.palette.primaryText)
-
-                Button {
-                    showHomeBackgroundPicker = true
-                } label: {
-                    HStack {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.title3)
-                            .foregroundStyle(appState.palette.accent)
-                            .frame(width: 44, height: 44)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(appState.palette.canvas.opacity(0.9))
-                            )
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Home background")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(appState.palette.primaryText)
-                            Text("Solid light color for the Today tab only.")
-                                .font(.subheadline)
-                                .foregroundStyle(appState.palette.secondaryText)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(appState.palette.secondaryText.opacity(0.8))
-                    }
-                }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -156,88 +104,6 @@ struct SettingsView: View {
         }
     }
 
-    private var themeCard: some View {
-        CardContainer(palette: appState.palette) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Themes")
-                    .font(.headline)
-                    .foregroundStyle(appState.palette.primaryText)
-
-                ForEach(viewModel.themes, id: \.self) { theme in
-                    Button {
-                        if theme.isPremiumOnly, !subscription.isPremium {
-                            subscription.presentPaywall()
-                        } else {
-                            viewModel.setTheme(theme)
-                        }
-                    } label: {
-                        HStack {
-                            ThemeSwatchView(
-                                colors: [theme.palette.headerAccent, theme.palette.accentSecondary],
-                                isSelected: theme == viewModel.selectedTheme,
-                                palette: appState.palette
-                            )
-                            Text(theme.displayName)
-                                .foregroundStyle(appState.palette.primaryText)
-                            if theme.isPremiumOnly, !subscription.isPremium {
-                                Image(systemName: "lock.fill")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(appState.palette.secondaryText)
-                            }
-                            Spacer()
-                            if theme == viewModel.selectedTheme {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(appState.palette.accent)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private var backgroundCard: some View {
-        CardContainer(palette: appState.palette) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Backgrounds")
-                    .font(.headline)
-                    .foregroundStyle(appState.palette.primaryText)
-
-                ForEach(viewModel.backgrounds, id: \.self) { background in
-                    Button {
-                        if background.isPremiumOnly, !subscription.isPremium {
-                            subscription.presentPaywall()
-                        } else {
-                            viewModel.setBackground(background)
-                        }
-                    } label: {
-                        HStack {
-                            ThemeSwatchView(
-                                colors: background.gradientColors,
-                                isSelected: background == viewModel.selectedBackground,
-                                palette: appState.palette
-                            )
-                            Text(background.displayName)
-                                .foregroundStyle(appState.palette.primaryText)
-                            if background.isPremiumOnly, !subscription.isPremium {
-                                Image(systemName: "lock.fill")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(appState.palette.secondaryText)
-                            }
-                            Spacer()
-                            if background == viewModel.selectedBackground {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(appState.palette.accent)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
     private var accountCard: some View {
         CardContainer(palette: appState.palette) {
             VStack(alignment: .leading, spacing: 14) {
@@ -267,18 +133,4 @@ struct SettingsView: View {
         }
     }
 
-    private var placeholderCard: some View {
-        CardContainer(palette: appState.palette) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Future Features")
-                    .font(.headline)
-                    .foregroundStyle(appState.palette.primaryText)
-
-                Label("Notifications", systemImage: "bell.badge")
-                Label("Account", systemImage: "person.crop.circle")
-                Label("Sync & Backup", systemImage: "icloud")
-            }
-            .foregroundStyle(appState.palette.secondaryText)
-        }
-    }
 }

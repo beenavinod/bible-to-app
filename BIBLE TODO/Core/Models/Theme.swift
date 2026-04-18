@@ -1,18 +1,6 @@
 import Foundation
 import SwiftUI
 
-struct ThemeOption: Identifiable, Equatable {
-    let id: UUID
-    let name: String
-    let preview: [ColorToken]
-}
-
-struct BackgroundOption: Identifiable, Equatable {
-    let id: UUID
-    let name: String
-    let colors: [ColorToken]
-}
-
 enum AppTab: Hashable {
     case home
     case journey
@@ -355,21 +343,6 @@ extension AppBackground {
     }
 }
 
-extension ThemeOption {
-    static let all: [ThemeOption] = [
-        ThemeOption(id: UUID(), name: AppTheme.oliveMist.displayName, preview: [.softGreen, .softGold]),
-        ThemeOption(id: UUID(), name: AppTheme.sand.displayName, preview: [.softGold, .accentRose]),
-        ThemeOption(id: UUID(), name: AppTheme.twilight.displayName, preview: [.softGreenDark, .accentBlue])
-    ]
-}
-
-extension BackgroundOption {
-    static let all: [BackgroundOption] = [
-        BackgroundOption(id: UUID(), name: AppBackground.plain.displayName, colors: [.canvas, .card]),
-        BackgroundOption(id: UUID(), name: AppBackground.dawn.displayName, colors: [.softGold, .card]),
-        BackgroundOption(id: UUID(), name: AppBackground.meadow.displayName, colors: [.softGreen, .card])
-    ]
-}
 
 extension HomeWallpaper {
     /// Gradient home wallpapers (`g1`–`g6`) require Premium.
