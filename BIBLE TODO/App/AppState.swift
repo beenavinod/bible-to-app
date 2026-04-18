@@ -104,7 +104,11 @@ final class AppState: ObservableObject {
             let (dest, userId, profile) = try await repository.resolveAppLaunchState()
             switch dest {
             case .welcome:
-                rootPhase = .needsAuth
+                if persistence.hasCompletedOnboarding() {
+                    rootPhase = .needsAuth
+                } else {
+                    rootPhase = .onboarding
+                }
             case .onboarding:
                 guard let userId else {
                     rootPhase = .needsAuth
@@ -123,7 +127,11 @@ final class AppState: ObservableObject {
                 rootPhase = .main
             }
         } catch {
-            rootPhase = .needsAuth
+            if persistence.hasCompletedOnboarding() {
+                rootPhase = .needsAuth
+            } else {
+                rootPhase = .onboarding
+            }
         }
     }
 
@@ -207,7 +215,9 @@ final class AppState: ObservableObject {
         } else {
             hasCompletedOnboarding = false
             persistence.setHasCompletedOnboarding(false)
-            rootPhase = .onboarding
+            if rootPhase != .onboarding {
+                rootPhase = .onboarding
+            }
         }
     }
 
@@ -226,6 +236,20 @@ final class AppState: ObservableObject {
         hasCompletedOnboarding = persistence.hasCompletedOnboarding()
         rootPhase = supabaseClient != nil ? .needsAuth : .configurationRequired
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Switches from onboarding to the sign-in page when an existing account is detected during signup.
+    func redirectToSignIn() {
+        persistence.setHasCompletedOnboarding(true)
+        hasCompletedOnboarding = true
+        rootPhase = .needsAuth
+    }
+
+    /// Switches from the sign-in page to the onboarding flow for new account creation.
+    func redirectToOnboarding() {
+        persistence.setHasCompletedOnboarding(false)
+        hasCompletedOnboarding = false
+        rootPhase = .onboarding
     }
 
     // MARK: - Settings / theme
@@ -257,6 +281,11 @@ final class AppState: ObservableObject {
         hasCompletedOnboarding = true
         persistence.setPreferredName(preferredName)
         persistence.setHasCompletedOnboarding(true)
+
+        guard sessionUserId != nil else {
+            rootPhase = .needsAuth
+            return
+        }
 
         if let userId = sessionUserId, let repository {
             let display = preferredName ?? "Friend"

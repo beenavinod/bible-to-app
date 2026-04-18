@@ -1409,7 +1409,7 @@ private struct OnboardingAuthScreen: View {
                             .foregroundStyle(palette.secondaryText)
                             .multilineTextAlignment(.center)
                     } else {
-                        Text("Sign in with your username or email and password. If you use a username only, we create a private sign-in email for your account.")
+                        Text("Create an account to save your journey. Pick a username or use your email along with a password.")
                             .font(.subheadline)
                             .foregroundStyle(palette.secondaryText)
                             .multilineTextAlignment(.center)
@@ -1433,7 +1433,7 @@ private struct OnboardingAuthScreen: View {
                     .opacity(showContent ? 1 : 0)
                     .padding(.top, 8)
                 } else {
-                    EmailPasswordAuthForm(appState: appState, palette: palette, onSuccess: onContinue)
+                    EmailPasswordAuthForm(appState: appState, palette: palette, onSuccess: onContinue, signUpOnly: true)
                         .opacity(showContent ? 1 : 0)
                 }
 
