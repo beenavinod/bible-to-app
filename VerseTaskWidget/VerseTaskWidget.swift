@@ -22,16 +22,33 @@ struct Provider: TimelineProvider {
     }
 
     private func currentEntry() -> VerseTaskEntry {
-        guard let data = WidgetDataStore.readVerseTask() else {
-            return .placeholder
+        let isPremium = WidgetDataStore.readPremiumUnlocked()
+        let data = WidgetDataStore.readVerseTask()
+
+        guard isPremium else {
+            if let data {
+                return VerseTaskEntry(
+                    date: .now,
+                    verseText: data.verseText,
+                    reference: data.reference,
+                    taskTitle: data.taskTitle,
+                    taskDescription: data.taskDescription,
+                    symbolName: data.symbolName,
+                    isLocked: true
+                )
+            }
+            return .locked
         }
+
+        guard let data else { return .placeholder }
         return VerseTaskEntry(
             date: .now,
             verseText: data.verseText,
             reference: data.reference,
             taskTitle: data.taskTitle,
             taskDescription: data.taskDescription,
-            symbolName: data.symbolName
+            symbolName: data.symbolName,
+            isLocked: false
         )
     }
 }
@@ -43,6 +60,7 @@ struct VerseTaskEntry: TimelineEntry {
     let taskTitle: String
     let taskDescription: String
     let symbolName: String
+    var isLocked: Bool = false
 
     static let placeholder = VerseTaskEntry(
         date: .now,
@@ -51,6 +69,16 @@ struct VerseTaskEntry: TimelineEntry {
         taskTitle: "Encourage Someone",
         taskDescription: "Send one meaningful message filled with hope.",
         symbolName: "message.badge.fill"
+    )
+
+    static let locked = VerseTaskEntry(
+        date: .now,
+        verseText: "Let all that you do be done in love.",
+        reference: "1 Corinthians 16:14",
+        taskTitle: "Encourage Someone",
+        taskDescription: "Send one meaningful message filled with hope.",
+        symbolName: "message.badge.fill",
+        isLocked: true
     )
 }
 
@@ -72,6 +100,47 @@ struct VerseTaskWidgetEntryView: View {
 
     @ViewBuilder
     private var content: some View {
+        if entry.isLocked {
+            lockedView
+        } else {
+            switch family {
+            case .systemSmall:
+                smallWidget
+            default:
+                mediumWidget
+            }
+        }
+    }
+
+    private var lockedView: some View {
+        ZStack {
+            unlockedContent
+                .blur(radius: 8)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+            Color.white.opacity(0.15)
+
+            VStack(spacing: 8) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: family == .systemSmall ? 22 : 26, weight: .medium))
+                    .foregroundStyle(WidgetPalette.accentDark)
+
+                Text("Bible Life")
+                    .font(.system(size: family == .systemSmall ? 13 : 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(WidgetPalette.primaryText)
+
+                Text("Subscribe to unlock")
+                    .font(.system(size: family == .systemSmall ? 10 : 12, weight: .medium))
+                    .foregroundStyle(WidgetPalette.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var unlockedContent: some View {
         switch family {
         case .systemSmall:
             smallWidget
@@ -217,14 +286,26 @@ private enum WidgetPalette {
     static let border = Color(red: 0.86, green: 0.82, blue: 0.74)
 }
 
-#Preview(as: .systemSmall) {
+#Preview("Small", as: .systemSmall) {
     VerseTaskWidget()
 } timeline: {
     VerseTaskEntry.placeholder
 }
 
-#Preview(as: .systemMedium) {
+#Preview("Medium", as: .systemMedium) {
     VerseTaskWidget()
 } timeline: {
     VerseTaskEntry.placeholder
+}
+
+#Preview("Small Locked", as: .systemSmall) {
+    VerseTaskWidget()
+} timeline: {
+    VerseTaskEntry.locked
+}
+
+#Preview("Medium Locked", as: .systemMedium) {
+    VerseTaskWidget()
+} timeline: {
+    VerseTaskEntry.locked
 }

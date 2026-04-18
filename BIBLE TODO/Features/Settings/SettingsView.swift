@@ -72,36 +72,74 @@ struct SettingsView: View {
 
     private var widgetCard: some View {
         CardContainer(palette: appState.palette) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Widget")
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Widgets")
                     .font(.headline)
                     .foregroundStyle(appState.palette.primaryText)
 
-                Toggle(isOn: Binding(
-                    get: { viewModel.widgetsEnabled },
-                    set: { viewModel.setWidgetsEnabled($0) }
-                )) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Enable Home Screen widget")
-                            .foregroundStyle(appState.palette.primaryText)
-                        Text("Keep the daily verse visible outside the app.")
-                            .font(.subheadline)
-                            .foregroundStyle(appState.palette.secondaryText)
+                ForEach(viewModel.widgets) { widget in
+                    widgetRow(widget)
+
+                    if widget.id != viewModel.widgets.last?.id {
+                        Divider()
+                            .overlay(appState.palette.border.opacity(0.5))
                     }
                 }
-                .tint(appState.palette.accent)
-
-                WidgetPreviewCard(
-                    palette: appState.palette,
-                    verseReference: "Psalm 23:1-3",
-                    taskTitle: "Give Thanks"
-                )
-
-                Text("This is an in-app sample widget preview. A real Home Screen widget requires a WidgetKit extension target.")
-                    .font(.footnote)
-                    .foregroundStyle(appState.palette.secondaryText)
             }
         }
+    }
+
+    private func widgetRow(_ widget: WidgetInfo) -> some View {
+        let isLocked = widget.isPremiumOnly && !subscription.isPremium
+
+        return Button {
+            if isLocked {
+                subscription.presentPaywall()
+            }
+        } label: {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(appState.palette.accent.opacity(isLocked ? 0.15 : 0.18))
+                    .frame(width: 40, height: 40)
+                    .overlay {
+                        Image(systemName: widget.symbolName)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(
+                                isLocked
+                                    ? appState.palette.secondaryText
+                                    : appState.palette.accent
+                            )
+                    }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(widget.name)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(appState.palette.primaryText)
+                    Text(widget.description)
+                        .font(.caption)
+                        .foregroundStyle(appState.palette.secondaryText)
+                }
+
+                Spacer(minLength: 0)
+
+                if isLocked {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Premium")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(appState.palette.accentSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(appState.palette.accentSecondary.opacity(0.12))
+                    )
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var accountCard: some View {
