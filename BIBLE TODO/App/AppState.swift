@@ -269,6 +269,23 @@ final class AppState: ObservableObject {
         persistence.setSelectedHomeWallpaper(wallpaper)
     }
 
+    /// When a subscription lapses, snap wallpaper / app background back to free-tier options.
+    func applyFreeTierRestrictionsIfNeeded() {
+        if homeWallpaper.isPremiumOnly {
+            setHomeWallpaper(.w1)
+        }
+        if background.isPremiumOnly {
+            setBackground(.plain)
+        }
+        if theme.isPremiumOnly {
+            setTheme(.oliveMist)
+        }
+    }
+
+    func resyncHomeWidgetVerseIfPossible() {
+        mainTabViewModels?.home.resyncVerseWidgetForCurrentVerse()
+    }
+
     func setWidgetsEnabled(_ isEnabled: Bool) {
         widgetsEnabled = isEnabled
         persistence.setWidgetsEnabled(isEnabled)

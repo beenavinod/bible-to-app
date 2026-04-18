@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeBackgroundPickerSheet: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
     @Environment(\.dismiss) private var dismiss
 
     private let sheetBackground = Color(red: 0.99, green: 0.97, blue: 0.93)
@@ -61,6 +62,10 @@ struct HomeBackgroundPickerSheet: View {
         let selected = wallpaper == appState.homeWallpaper
 
         return Button {
+            if wallpaper.isPremiumOnly, !subscription.isPremium {
+                subscription.presentPaywall()
+                return
+            }
             Task { @MainActor in
                 appState.setHomeWallpaper(wallpaper)
                 try? await Task.sleep(for: .milliseconds(120))
@@ -75,6 +80,14 @@ struct HomeBackgroundPickerSheet: View {
                         } else {
                             wallpaper.solidBackgroundColor
                         }
+                    }
+
+                    if wallpaper.isPremiumOnly, !subscription.isPremium {
+                        Color.black.opacity(0.38)
+                        Image(systemName: "lock.fill")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
 
                     Text("Aa")

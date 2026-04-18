@@ -2,6 +2,7 @@ import SwiftUI
 
 struct JourneyView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
     @ObservedObject private var viewModel: JourneyViewModel
     @State private var sharePayload: ShareDrawerPayload?
     @State private var selectedBadge: Achievement?
@@ -21,8 +22,12 @@ struct JourneyView: View {
                         subtitle: nil,
                         palette: appState.palette,
                         onShareTap: {
-                            sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
-                            appState.awardFirstShareBadgeIfNeeded()
+                            if subscription.isPremium {
+                                sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
+                                appState.awardFirstShareBadgeIfNeeded()
+                            } else {
+                                subscription.presentPaywall()
+                            }
                         }
                     )
 
@@ -87,6 +92,11 @@ struct JourneyView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard !subscription.isPremium else { return }
+                subscription.presentPaywall()
+            }
         }
     }
 
@@ -121,7 +131,11 @@ struct JourneyView: View {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: 4), spacing: 18) {
                     ForEach(sortedAchievements.prefix(4)) { achievement in
                         Button {
-                            selectedBadge = achievement
+                            if !viewModel.isBadgeEarned(achievement), !subscription.isPremium {
+                                subscription.presentPaywall()
+                            } else {
+                                selectedBadge = achievement
+                            }
                         } label: {
                             AchievementBadgeView(
                                 achievement: achievement,

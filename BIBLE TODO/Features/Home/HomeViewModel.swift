@@ -204,15 +204,22 @@ final class HomeViewModel: ObservableObject {
 
     private func syncVerseTaskWidget(verse: Verse) {
         let dateISO = BibleTodoDate.formatLocalDay(verse.date)
+        let showTask = WidgetDataStore.readPremiumUnlocked()
         WidgetDataStore.writeVerseTask(SharedVerseTaskData(
             verseText: verse.text,
             reference: verse.reference,
-            taskTitle: verse.taskTitle,
-            taskDescription: verse.taskDescription,
+            taskTitle: showTask ? verse.taskTitle : "",
+            taskDescription: showTask ? verse.taskDescription : "",
             symbolName: verse.symbolName,
             dateISO: dateISO
         ))
         WidgetCenter.shared.reloadTimelines(ofKind: "VerseTaskWidget")
+    }
+
+    /// Re-writes widget payload when premium status changes (task text depends on `readPremiumUnlocked()`).
+    func resyncVerseWidgetForCurrentVerse() {
+        guard let verse = displayedRecord?.verse else { return }
+        syncVerseTaskWidget(verse: verse)
     }
 }
 

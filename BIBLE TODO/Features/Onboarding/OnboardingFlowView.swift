@@ -2,12 +2,14 @@ import SwiftUI
 
 struct OnboardingFlowView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
 
     @State private var currentStep = 0
     @State private var draftName = ""
     @State private var selections: [String: String] = [:]
     @State private var multiSelections: [String: Set<String>] = [:]
     @State private var showBadgeUnlocked = false
+    @State private var onboardingPaywallSelection: PremiumProductID = .annual
 
     /// Flow matches onboarding spec: loader → personalization → Pain–Gap–Truth → … → first task → save → paywall.
     private let totalSteps = 31
@@ -97,7 +99,7 @@ struct OnboardingFlowView: View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.bottom, currentStep == 30 ? 4 : 12)
     }
 
     private var progressValue: CGFloat {
@@ -684,6 +686,9 @@ struct OnboardingFlowView: View {
             buttonTitle: "Mark as Complete",
             buttonIcon: nil,
             topIcon: nil,
+            showsFooterContinue: true,
+            titleFont: nil,
+            topScrollSpacer: nil,
             palette: appState.palette,
             card: {
                 AnyView(
@@ -706,18 +711,27 @@ struct OnboardingFlowView: View {
         messageScreen(
             stepKey: stepKey,
             eyebrow: nil,
-            title: "Go deeper with Live the Word",
-            subtitle: nil,
+            title: "Go deeper with Bible Life",
+            subtitle: "Subscribe anytime — or continue free and upgrade later in Settings.",
             card: {
-                OnboardingHeroCard {
-                    Text("Paywall placeholder — pricing and plans TBD.")
-                        .font(.title3.weight(.medium))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(appState.palette.secondaryText)
-                }
+                AnyView(
+                    PremiumPaywallCore(
+                        selectedProductID: $onboardingPaywallSelection,
+                        compact: true,
+                        showSkipButton: true,
+                        onSkip: advance
+                    )
+                    .environmentObject(subscription)
+                    .environmentObject(appState)
+                )
             },
             footer: nil,
-            buttonTitle: "Continue"
+            buttonTitle: "",
+            buttonIcon: nil,
+            topIcon: nil,
+            showsFooterContinue: false,
+            titleFont: .system(.title, design: .serif, weight: .semibold),
+            topScrollSpacer: 10
         )
     }
 
@@ -730,7 +744,10 @@ struct OnboardingFlowView: View {
         footer: String?,
         buttonTitle: String,
         buttonIcon: String? = nil,
-        topIcon: String? = nil
+        topIcon: String? = nil,
+        showsFooterContinue: Bool = true,
+        titleFont: Font? = nil,
+        topScrollSpacer: CGFloat? = nil
     ) -> some View {
         OnboardingMessageScreen(
             stepKey: stepKey,
@@ -741,6 +758,9 @@ struct OnboardingFlowView: View {
             buttonTitle: buttonTitle,
             buttonIcon: buttonIcon,
             topIcon: topIcon,
+            showsFooterContinue: showsFooterContinue,
+            titleFont: titleFont,
+            topScrollSpacer: topScrollSpacer,
             palette: appState.palette,
             card: { AnyView(card()) },
             onContinue: advance
@@ -1008,16 +1028,28 @@ private struct OnboardingMessageScreen: View {
     let buttonTitle: String
     let buttonIcon: String?
     let topIcon: String?
+    /// When `false`, the paywall supplies its own **Skip** control inside the card.
+    let showsFooterContinue: Bool
+    /// When set (e.g. paywall), overrides the default large serif title.
+    let titleFont: Font?
+    /// When set, reduces the top inset below the onboarding progress bar.
+    let topScrollSpacer: CGFloat?
     let palette: AppThemePalette
     let card: () -> AnyView
     let onContinue: () -> Void
 
     @State private var revealCount = 0
 
+    private var resolvedTopSpacer: CGFloat { topScrollSpacer ?? 36 }
+
+    private var resolvedTitleFont: Font {
+        titleFont ?? .system(.largeTitle, design: .serif, weight: .semibold)
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 22) {
-                Spacer(minLength: 36)
+                Spacer(minLength: resolvedTopSpacer)
 
                 if let topIcon {
                     OnboardingIconMoment(symbol: topIcon, palette: palette)
@@ -1034,7 +1066,7 @@ private struct OnboardingMessageScreen: View {
 
                     if let title {
                         Text(title)
-                            .font(.system(.largeTitle, design: .serif, weight: .semibold))
+                            .font(resolvedTitleFont)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(palette.primaryText)
                     }
@@ -1063,14 +1095,16 @@ private struct OnboardingMessageScreen: View {
                         .offset(y: revealCount > 2 ? 0 : 16)
                 }
 
-                OnboardingPrimaryButton(
-                    title: buttonTitle,
-                    systemImage: buttonIcon,
-                    palette: palette,
-                    action: onContinue
-                )
-                .opacity(revealCount > 2 ? 1 : 0)
-                .offset(y: revealCount > 2 ? 0 : 20)
+                if showsFooterContinue {
+                    OnboardingPrimaryButton(
+                        title: buttonTitle,
+                        systemImage: buttonIcon,
+                        palette: palette,
+                        action: onContinue
+                    )
+                    .opacity(revealCount > 2 ? 1 : 0)
+                    .offset(y: revealCount > 2 ? 0 : 20)
+                }
 
                 Spacer(minLength: 34)
             }
@@ -1658,7 +1692,7 @@ private struct OnboardingPrimaryButton: View {
 }
 
 #Preview {
-    AppStatePreviewRoot { _ in
+    AppStatePreviewRoot { _, _ in
         OnboardingFlowView()
     }
 }

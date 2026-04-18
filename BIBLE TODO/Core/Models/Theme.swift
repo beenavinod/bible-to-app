@@ -31,6 +31,14 @@ enum AppTheme: String, CaseIterable, Codable {
         case .twilight: "Evening Calm"
         }
     }
+
+    /// Accent themes beyond the default `oliveMist` require Premium.
+    var isPremiumOnly: Bool {
+        switch self {
+        case .oliveMist: false
+        case .sand, .twilight: true
+        }
+    }
 }
 
 enum AppBackground: String, CaseIterable, Codable {
@@ -361,4 +369,19 @@ extension BackgroundOption {
         BackgroundOption(id: UUID(), name: AppBackground.dawn.displayName, colors: [.softGold, .card]),
         BackgroundOption(id: UUID(), name: AppBackground.meadow.displayName, colors: [.softGreen, .card])
     ]
+}
+
+extension HomeWallpaper {
+    /// Gradient home wallpapers (`g1`–`g6`) require Premium.
+    var isPremiumOnly: Bool { homeLinearGradient != nil }
+}
+
+extension AppBackground {
+    /// App-wide gradient backgrounds (`dawn`, `meadow`) require Premium; `plain` is free.
+    var isPremiumOnly: Bool {
+        switch self {
+        case .plain: false
+        case .dawn, .meadow: true
+        }
+    }
 }

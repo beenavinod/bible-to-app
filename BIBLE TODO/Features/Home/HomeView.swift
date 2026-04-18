@@ -15,6 +15,7 @@ private let homeTopChromeLayoutHeight: CGFloat = 56
 
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
     @ObservedObject private var viewModel: HomeViewModel
     @Binding var path: NavigationPath
 
@@ -113,10 +114,15 @@ struct HomeView: View {
         .sheet(isPresented: $showHomeBackgroundPicker) {
             HomeBackgroundPickerSheet()
                 .environmentObject(appState)
+                .environmentObject(subscription)
                 .presentationDragIndicator(.visible)
         }
         .sheet(item: $sharePayload) { payload in
-            ShareDrawerSheet(payload: payload, palette: appState.palette)
+            ShareDrawerSheet(
+                payload: payload,
+                palette: appState.palette,
+                verseShareIncludesTask: subscription.isPremium
+            )
                 .presentationDetents([.height(520), .large])
                 .presentationDragIndicator(.visible)
         }
@@ -316,7 +322,7 @@ struct HomeView: View {
 }
 
 #Preview {
-    AppStatePreviewRoot { appState in
+    AppStatePreviewRoot { appState, _ in
         HomeView(viewModel: appState.mainTabViewModels!.home, path: .constant(NavigationPath()))
     }
 }

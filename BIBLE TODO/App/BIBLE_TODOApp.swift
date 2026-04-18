@@ -6,11 +6,16 @@ struct BIBLE_TODOApp: App {
         supabaseClient: SupabaseConfig.makeClient(),
         persistence: UserDefaultsPersistence()
     )
+    @StateObject private var subscriptionManager = SubscriptionManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .environmentObject(subscriptionManager)
+                .onAppear {
+                    subscriptionManager.configure(appState: appState)
+                }
         }
     }
 }

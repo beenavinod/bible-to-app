@@ -62,6 +62,8 @@ private struct ShareThemedCanvas: View {
 struct ShareableVerseCardLayout: View {
     let record: DailyRecord
     let wallpaper: HomeWallpaper
+    /// When `false`, export verse-only (no task card) for free-tier users.
+    var showsTaskCard: Bool = true
 
     private let side = ShareExportLayout.side
     private var fg: HomeForegroundStyle { wallpaper.homeForeground }
@@ -87,10 +89,14 @@ struct ShareableVerseCardLayout: View {
                 HomeDayVerseSection(record: record, fg: fg, fontScale: verseScale)
                     .padding(.horizontal, 44)
 
-                Spacer(minLength: 32)
+                if showsTaskCard {
+                    Spacer(minLength: 32)
 
-                HomeDayTaskCardTextOnly(record: record, fg: fg, fontScale: taskScale, isViewingToday: true)
-                    .padding(.horizontal, 48)
+                    HomeDayTaskCardTextOnly(record: record, fg: fg, fontScale: taskScale, isViewingToday: true)
+                        .padding(.horizontal, 48)
+                } else {
+                    Spacer(minLength: 24)
+                }
 
                 Spacer(minLength: 28)
 
@@ -291,6 +297,7 @@ struct ShareableStreakCardLayout: View {
 struct ShareableCardPreview: View {
     let payload: ShareDrawerPayload
     let palette: AppThemePalette
+    var verseShareIncludesTask: Bool = true
 
     var body: some View {
         let w = ShareExportLayout.side
@@ -305,7 +312,7 @@ struct ShareableCardPreview: View {
                     Group {
                         switch payload {
                         case .verse(let record, let wallpaper):
-                            ShareableVerseCardLayout(record: record, wallpaper: wallpaper)
+                            ShareableVerseCardLayout(record: record, wallpaper: wallpaper, showsTaskCard: verseShareIncludesTask)
                         case .streak(let summary, let week):
                             ShareableStreakCardLayout(summary: summary, week: week, palette: palette)
                         }
@@ -329,11 +336,11 @@ struct ShareableCardPreview: View {
 
 @MainActor
 enum ShareImageRenderer {
-    static func render(_ payload: ShareDrawerPayload, palette: AppThemePalette) -> UIImage? {
+    static func render(_ payload: ShareDrawerPayload, palette: AppThemePalette, verseShareIncludesTask: Bool = true) -> UIImage? {
         let content: AnyView = {
             switch payload {
             case .verse(let r, let wallpaper):
-                return AnyView(ShareableVerseCardLayout(record: r, wallpaper: wallpaper))
+                return AnyView(ShareableVerseCardLayout(record: r, wallpaper: wallpaper, showsTaskCard: verseShareIncludesTask))
             case .streak(let s, let w):
                 return AnyView(ShareableStreakCardLayout(summary: s, week: w, palette: palette))
             }
@@ -411,6 +418,8 @@ private struct SharePaletteButton: View {
 struct ShareDrawerSheet: View {
     let payload: ShareDrawerPayload
     let palette: AppThemePalette
+    /// Verse shares omit the task card when `false` (free tier).
+    var verseShareIncludesTask: Bool = true
     @Environment(\.dismiss) private var dismiss
 
     @State private var renderedImage: UIImage?
@@ -430,7 +439,7 @@ struct ShareDrawerSheet: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
 
-                ShareableCardPreview(payload: payload, palette: palette)
+                ShareableCardPreview(payload: payload, palette: palette, verseShareIncludesTask: verseShareIncludesTask)
                     .padding(.horizontal, 8)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Share preview")
@@ -490,7 +499,7 @@ struct ShareDrawerSheet: View {
         }
         .task(id: payload.id) {
             isRendering = true
-            renderedImage = ShareImageRenderer.render(payload, palette: palette)
+            renderedImage = ShareImageRenderer.render(payload, palette: palette, verseShareIncludesTask: verseShareIncludesTask)
             isRendering = false
         }
     }
