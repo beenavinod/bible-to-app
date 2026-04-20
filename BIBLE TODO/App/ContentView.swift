@@ -123,7 +123,7 @@ struct ContentView: View {
 /// Single `AppState` instance for previews so `StateObject` / `EnvironmentObject` stay in sync.
 struct AppStatePreviewRoot<Content: View>: View {
     @StateObject private var appState = AppState(swiftUIPreviewPersistence: PreviewPersistence())
-    @StateObject private var subscription = SubscriptionManager()
+    @StateObject private var subscription = SubscriptionManager.forSwiftUIPreviews()
     @ViewBuilder private let content: (AppState, SubscriptionManager) -> Content
 
     init(@ViewBuilder content: @escaping (AppState, SubscriptionManager) -> Content) {

@@ -10,6 +10,8 @@ struct OnboardingFlowView: View {
     @State private var multiSelections: [String: Set<String>] = [:]
     @State private var showBadgeUnlocked = false
     @State private var onboardingPaywallSelection: PremiumProductID = .annual
+    /// Avoids scheduling `completeOnboarding` twice if `isPremium` and `currentStep` updates overlap.
+    @State private var didScheduleOnboardingCompletionFromPaywall = false
 
     /// Flow matches onboarding spec: loader → personalization → Pain–Gap–Truth → … → first task → save → paywall.
     private let totalSteps = 31
@@ -48,6 +50,20 @@ struct OnboardingFlowView: View {
                 }
             )
             .interactiveDismissDisabled()
+        }
+        .onChange(of: currentStep) { oldStep, newStep in
+            guard newStep == 30 else { return }
+            if oldStep != newStep {
+                didScheduleOnboardingCompletionFromPaywall = false
+            }
+            advanceOnboardingFromPaywallIfNeeded()
+        }
+        .onChange(of: subscription.isPremium) { _, isPremium in
+            if currentStep == 30, !isPremium {
+                didScheduleOnboardingCompletionFromPaywall = false
+            }
+            guard isPremium else { return }
+            advanceOnboardingFromPaywallIfNeeded()
         }
     }
 
@@ -613,6 +629,14 @@ struct OnboardingFlowView: View {
                 currentStep += 1
             }
         }
+    }
+
+    /// Paywall (step 30) is embedded here, not in `PremiumPaywallView`, so `dismissPaywall()` does not advance the flow. **Skip** calls `advance` directly; subscribe/restore must react to `isPremium`.
+    private func advanceOnboardingFromPaywallIfNeeded() {
+        guard currentStep == 30, subscription.isPremium else { return }
+        guard !didScheduleOnboardingCompletionFromPaywall else { return }
+        didScheduleOnboardingCompletionFromPaywall = true
+        advance()
     }
 
     private func select(_ option: String, key: String, completesFlow: Bool = false) {

@@ -1,12 +1,13 @@
+import RevenueCat
 import StoreKit
 import SwiftUI
 
-/// Shown in the StoreKit sheet and in onboarding when products are unavailable.
+/// Shown in the paywall and in onboarding when products are unavailable.
 enum PremiumPriceFallback {
     static let monthlyDisplay = "€4.99"
     static let annualDisplay = "€34.99"
     static let monthlyCaption = "Billed monthly"
-    static let annualCaption = "Billed annually"
+    static let annualCaption = "Billed yearly"
 }
 
 /// Shared marketing + plans + CTAs (no `NavigationStack`).
@@ -40,13 +41,20 @@ struct PremiumPaywallCore: View {
                     .foregroundStyle(.red.opacity(0.9))
             }
 
+            if let feedback = subscription.restoreFeedback {
+                Text(feedback.userMessage)
+                    .font(.footnote)
+                    .foregroundStyle(feedback.isPositive ? palette.accent : palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             legalRow
 
             ctaSection
         }
         .padding(.horizontal, horizontalPadding)
         .task {
-            if subscription.products.isEmpty {
+            if !subscription.isPaywallCatalogReady {
                 await subscription.loadProducts()
             }
         }
@@ -73,7 +81,8 @@ struct PremiumPaywallCore: View {
 
     private func planCard(_ id: PremiumProductID) -> some View {
         let selected = selectedProductID == id
-        let product = subscription.product(for: id)
+        let storeProduct = subscription.storeProduct(for: id)
+        let skProduct = subscription.product(for: id)
         return Button {
             selectedProductID = id
         } label: {
@@ -90,15 +99,15 @@ struct PremiumPaywallCore: View {
                 }
                 .frame(height: 22, alignment: .leading)
 
-                Text(id == .monthly ? "Monthly" : "Annual")
+                Text(id == .monthly ? "Monthly" : "Yearly")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
 
-                Text(displayPrice(product: product, id: id))
+                Text(displayPrice(storeProduct: storeProduct, skProduct: skProduct, id: id))
                     .font(.title3.weight(.bold))
                     .foregroundStyle(palette.primaryText)
 
-                Text(billingCaption(product: product, id: id))
+                Text(billingCaption(storeProduct: storeProduct, skProduct: skProduct, id: id))
                     .font(.caption)
                     .foregroundStyle(palette.secondaryText)
 
@@ -118,22 +127,52 @@ struct PremiumPaywallCore: View {
         .buttonStyle(.plain)
     }
 
-    private func displayPrice(product: Product?, id: PremiumProductID) -> String {
-        if let product { return product.displayPrice }
+    private func displayPrice(storeProduct: StoreProduct?, skProduct: Product?, id: PremiumProductID) -> String {
+        if let storeProduct { return storeProduct.localizedPriceString }
+        if let skProduct { return skProduct.displayPrice }
         switch id {
         case .monthly: return PremiumPriceFallback.monthlyDisplay
         case .annual: return PremiumPriceFallback.annualDisplay
         }
     }
 
-    private func billingCaption(product: Product?, id: PremiumProductID) -> String {
-        if let product, let sub = product.subscription {
-            return subscriptionPeriodCaption(sub.subscriptionPeriod)
+    private func billingCaption(storeProduct: StoreProduct?, skProduct: Product?, id: PremiumProductID) -> String {
+        if let storeProduct, let period = storeProduct.subscriptionPeriod {
+            let caption = Self.captionForSubscriptionPeriod(unitRaw: period.unit.rawValue, value: period.value)
+            if !caption.isEmpty { return caption }
+        }
+        if let skProduct, let sub = skProduct.subscription {
+            let p = sub.subscriptionPeriod
+            let caption = Self.captionForSubscriptionPeriod(unitRaw: Self.storeKitPeriodUnitRaw(p.unit), value: p.value)
+            if !caption.isEmpty { return caption }
         }
         if subscription.isLoadingProducts { return "Loading price…" }
         switch id {
         case .monthly: return PremiumPriceFallback.monthlyCaption
         case .annual: return PremiumPriceFallback.annualCaption
+        }
+    }
+
+    /// Aligns with `SKProductPeriodUnit` / RevenueCat `SubscriptionPeriod.Unit` raw ordering.
+    private static func storeKitPeriodUnitRaw(_ unit: Product.SubscriptionPeriod.Unit) -> Int {
+        switch unit {
+        case .day: return 0
+        case .week: return 1
+        case .month: return 2
+        case .year: return 3
+        default: return -1
+        }
+    }
+
+    /// `unitRaw`: day=0, week=1, month=2, year=3 (RevenueCat matches StoreKit here).
+    private static func captionForSubscriptionPeriod(unitRaw: Int, value: Int) -> String {
+        switch (unitRaw, value) {
+        case (2, 1): return "Billed monthly"
+        case (3, 1): return "Billed yearly"
+        case (0, 1): return "Per day"
+        case (1, 1): return "Per week"
+        default:
+            return ""
         }
     }
 
@@ -184,11 +223,19 @@ struct PremiumPaywallCore: View {
 
     private var legalRow: some View {
         VStack(spacing: 10) {
-            Button("Restore purchases") {
-                Task { await subscription.restorePurchases() }
+            HStack(spacing: 10) {
+                if subscription.isRestoringPurchases {
+                    ProgressView()
+                        .scaleEffect(0.9)
+                }
+                Button("Restore purchases") {
+                    Task { await subscription.restorePurchases() }
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(palette.accent)
+                .disabled(subscription.isRestoringPurchases || subscription.isLoadingProducts)
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(palette.accent)
+            .frame(maxWidth: .infinity)
 
             Text("Subscriptions renew automatically until cancelled in Settings. Trial eligibility is determined by Apple for your account.")
                 .font(.caption2)
@@ -229,7 +276,7 @@ struct PremiumPaywallCore: View {
                         )
                     )
             )
-            .disabled(subscription.isLoadingProducts)
+            .disabled(subscription.isLoadingProducts || subscription.isRestoringPurchases)
 
             if showSkipButton, let onSkip {
                 Button(action: onSkip) {
@@ -253,47 +300,10 @@ struct PremiumPaywallCore: View {
         .padding(.top, 4)
     }
 
-    /// Annual → trial CTA; monthly → `Continue` (subscribe to monthly).
-    private var primaryCTATitle: String {
-        switch selectedProductID {
-        case .annual:
-            if let product = subscription.product(for: .annual),
-               let offer = product.subscription?.introductoryOffer,
-               offer.paymentMode == .freeTrial {
-                let days = introOfferDayCount(offer.period)
-                if days > 0 {
-                    return "Start \(days)-day free trial"
-                }
-            }
-            return "Start 3-day free trial"
-        case .monthly:
-            return "Continue"
-        }
-    }
-
-    private func introOfferDayCount(_ period: Product.SubscriptionPeriod) -> Int {
-        switch period.unit {
-        case .day: return period.value
-        case .week: return period.value * 7
-        case .month: return period.value * 30
-        case .year: return period.value * 365
-        @unknown default: return 0
-        }
-    }
-
-    private func subscriptionPeriodCaption(_ period: Product.SubscriptionPeriod) -> String {
-        switch (period.unit, period.value) {
-        case (.month, 1): return "Billed monthly"
-        case (.year, 1): return "Billed annually"
-        case (.day, 1): return "Per day"
-        case (.week, 1): return "Per week"
-        default:
-            return ""
-        }
-    }
+    private var primaryCTATitle: String { "Continue" }
 }
 
-/// Marketing + plan selection; purchase still flows through StoreKit.
+/// Marketing + plan selection; purchase flows through RevenueCat.
 struct PremiumPaywallView: View {
     @EnvironmentObject private var subscription: SubscriptionManager
     @EnvironmentObject private var appState: AppState
@@ -327,5 +337,26 @@ struct PremiumPaywallView: View {
                 }
             }
         }
+    }
+}
+
+#Preview("Premium paywall") {
+    AppStatePreviewRoot { _, _ in
+        PremiumPaywallView()
+    }
+}
+
+#Preview("Paywall core (onboarding)") {
+    AppStatePreviewRoot { appState, _ in
+        ScrollView {
+            PremiumPaywallCore(
+                selectedProductID: .constant(.annual),
+                compact: true,
+                showSkipButton: true,
+                onSkip: {}
+            )
+            .padding()
+        }
+        .background(appState.palette.canvas.ignoresSafeArea())
     }
 }

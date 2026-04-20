@@ -26,6 +26,10 @@ struct SettingsView: View {
 
                     widgetCard
                     accountCard
+
+                    #if DEBUG
+                    debugPaywallCard
+                    #endif
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
@@ -141,6 +145,36 @@ struct SettingsView: View {
         }
         .buttonStyle(.plain)
     }
+
+    #if DEBUG
+    /// Always available in Debug builds so you can open the paywall with ⌘R → Settings (even when `isPremium` is true from StoreKit testing).
+    private var debugPaywallCard: some View {
+        CardContainer(palette: appState.palette) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Debug")
+                    .font(.headline)
+                    .foregroundStyle(appState.palette.primaryText)
+                Text("Run the app with ⌘R (not SwiftUI previews), then tap below to present the premium sheet. Uses RevenueCat when API keys are set.")
+                    .font(.caption)
+                    .foregroundStyle(appState.palette.secondaryText)
+                Button {
+                    subscription.presentPaywall()
+                } label: {
+                    Text("Open premium paywall")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(appState.palette.accent)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(appState.palette.border.opacity(0.85), lineWidth: 1.2)
+                )
+            }
+        }
+    }
+    #endif
 
     private var accountCard: some View {
         CardContainer(palette: appState.palette) {

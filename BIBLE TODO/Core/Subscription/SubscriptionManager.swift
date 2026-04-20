@@ -1,126 +1,291 @@
 import Combine
 import Foundation
+import RevenueCat
 import StoreKit
 import SwiftUI
 import WidgetKit
 
-/// Auto-renewable subscription product identifiers — must match App Store Connect and `PremiumSubscriptions.storekit`.
-/// **Local testing:** `BIBLE TODO.xcodeproj/xcshareddata/PremiumSubscriptions.storekit` — shared Run schemes use `../PremiumSubscriptions.storekit` (one level up from `xcschemes/`), which matches where Xcode usually writes the path.
+/// Auto-renewable subscription product identifiers — must match App Store Connect and RevenueCat products.
 enum PremiumProductID: String, CaseIterable {
-    case monthly = "abvy.BIBLE-TODO.premium.monthly"
-    case annual = "abvy.BIBLE-TODO.premium.annual"
+    case monthly = "abvy.1.subscription.monthly"
+    case annual = "abvy.1.subscription.yearly"
 }
 
 @MainActor
-final class SubscriptionManager: ObservableObject {
+final class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
+    /// Shown after **Restore purchases** completes (success with no entitlement vs premium unlocked).
+    enum RestoreFeedback: Equatable {
+        case premiumUnlocked
+        case noActiveSubscription
+
+        var isPositive: Bool {
+            if case .premiumUnlocked = self { return true }
+            return false
+        }
+
+        var userMessage: String {
+            switch self {
+            case .premiumUnlocked:
+                return "Premium restored."
+            case .noActiveSubscription:
+                return "No active subscription for this Apple ID. Use the account that purchased Premium, or subscribe below."
+            }
+        }
+    }
+
     @Published private(set) var isPremium: Bool = false
+    /// Populated only for non-RevenueCat / StoreKit-only flows. When `usesRevenueCat` is true, use `storeProduct(for:)`.
     @Published private(set) var products: [Product] = []
+    /// RevenueCat `StoreProduct` per store identifier (Test Store + App Store) — avoids requiring `sk2Product`.
+    @Published private(set) var revenueCatStoreProductsByProductID: [String: StoreProduct] = [:]
     @Published private(set) var isLoadingProducts = false
+    @Published private(set) var isRestoringPurchases = false
     @Published private(set) var lastPurchaseError: String?
+    @Published private(set) var restoreFeedback: RestoreFeedback?
     @Published var isPresentingPaywall = false
 
     weak var appState: AppState?
 
-    private var updatesTask: Task<Void, Never>?
+    private var revenueCatIdentityObserver: AnyCancellable?
 
-    init() {
-        updatesTask = Task { @MainActor in
-            await listenForTransactionUpdates()
+    /// RevenueCat `Package` lookup for the current offering (used when purchasing through RevenueCat).
+    private var packagesByProductID: [String: Package] = [:]
+
+    /// When `true`, skips RevenueCat networking so SwiftUI previews can render the paywall using
+    /// `PremiumPriceFallback` instead of live products.
+    private let usesPreviewCatalog: Bool
+
+    private var usesRevenueCat: Bool {
+        RevenueCatConfig.isConfigured && !usesPreviewCatalog
+    }
+
+    init(usesPreviewCatalog: Bool = false) {
+        if !usesPreviewCatalog {
+            RevenueCatConfig.configurePurchasesIfNeeded()
         }
+        self.usesPreviewCatalog = usesPreviewCatalog
+        super.init()
         Task { @MainActor in
+            guard !usesPreviewCatalog else { return }
             await refreshEntitlements()
             await loadProducts()
         }
     }
 
-    deinit {
-        updatesTask?.cancel()
+    /// Subscription manager for `#Preview` / `AppStatePreviewRoot` — no RevenueCat networking.
+    static func forSwiftUIPreviews() -> SubscriptionManager {
+        SubscriptionManager(usesPreviewCatalog: true)
     }
 
     func configure(appState: AppState) {
         self.appState = appState
+        if usesRevenueCat {
+            Purchases.shared.delegate = self
+            revenueCatIdentityObserver = NotificationCenter.default
+                .publisher(for: .bibleTodoRevenueCatIdentityChanged)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    guard let self else { return }
+                    Task { await self.refreshEntitlements() }
+                }
+        }
     }
 
     func presentPaywall() {
+        restoreFeedback = nil
         isPresentingPaywall = true
     }
 
     func dismissPaywall() {
         isPresentingPaywall = false
+        lastPurchaseError = nil
+        restoreFeedback = nil
     }
 
     func product(for id: PremiumProductID) -> Product? {
         products.first { $0.id == id.rawValue }
     }
 
+    func storeProduct(for id: PremiumProductID) -> StoreProduct? {
+        revenueCatStoreProductsByProductID[id.rawValue]
+    }
+
+    func package(for id: PremiumProductID) -> Package? {
+        packagesByProductID[id.rawValue]
+    }
+
+    /// `true` when the paywall has enough catalog data to show prices (RevenueCat: package per plan; otherwise StoreKit products).
+    var isPaywallCatalogReady: Bool {
+        if usesPreviewCatalog { return true }
+        if usesRevenueCat {
+            return PremiumProductID.allCases.allSatisfy { packagesByProductID[$0.rawValue] != nil }
+        }
+        return !products.isEmpty
+    }
+
     func loadProducts() async {
+        if usesPreviewCatalog {
+            lastPurchaseError = nil
+            return
+        }
+        guard usesRevenueCat else {
+            isLoadingProducts = false
+            packagesByProductID = [:]
+            revenueCatStoreProductsByProductID = [:]
+            products = []
+            lastPurchaseError =
+                "RevenueCat is not configured. Add REVENUECAT_API_KEY_DEBUG / REVENUECAT_API_KEY_PRODUCTION to Secrets.xcconfig and configure a current offering with \(PremiumProductID.monthly.rawValue) and \(PremiumProductID.annual.rawValue)."
+            return
+        }
+        await loadProductsRevenueCat()
+    }
+
+    private func loadProductsRevenueCat() async {
         isLoadingProducts = true
         defer { isLoadingProducts = false }
-        let ids = PremiumProductID.allCases.map(\.rawValue)
         do {
-            var loaded = try await Product.products(for: ids)
-            #if DEBUG
-            if loaded.isEmpty {
-                try await Task.sleep(nanoseconds: 450_000_000)
-                loaded = try await Product.products(for: ids)
-            }
-            #endif
-            products = loaded.sorted { lhs, rhs in
-                guard
-                    let li = PremiumProductID(rawValue: lhs.id),
-                    let ri = PremiumProductID(rawValue: rhs.id)
-                else { return lhs.id < rhs.id }
-                return li.sortIndex < ri.sortIndex
-            }
-            if products.isEmpty {
-                let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-                #if DEBUG
-                let env = ProcessInfo.processInfo.environment
-                let skHints = env.filter { entry in
-                    let k = entry.key.lowercased()
-                    return k.contains("storekit") || k.contains("xctest") || k.contains("dyld_insert")
-                }
-                print(
-                    "SubscriptionManager: Product.products returned []. previews=\(isPreview) bundle=\(Bundle.main.bundleIdentifier ?? "?") AppStore.canMakePayments=\(AppStore.canMakePayments) storekitEnv=\(skHints)"
+            let offerings = try await Purchases.shared.offerings()
+            guard let current = offerings.current else {
+                lastPurchaseError =
+                    "No subscription offering from RevenueCat. In the dashboard create a current offering (e.g. “default”) with packages for \(PremiumProductID.monthly.rawValue) and \(PremiumProductID.annual.rawValue)."
+                packagesByProductID = [:]
+                revenueCatStoreProductsByProductID = [:]
+                products = []
+                debugLogRevenueCatOfferings(
+                    offerings: offerings,
+                    current: nil,
+                    map: [:],
+                    resolvedStoreProductIDs: [],
+                    userError: lastPurchaseError
                 )
-                #endif
-                if isPreview {
-                    lastPurchaseError =
-                        "Subscriptions are not loaded in SwiftUI previews. Run the BIBLE TODO scheme with ⌘R (StoreKit config is attached to the Run action, not to previews)."
-                } else {
-                    lastPurchaseError =
-                        "No subscription products loaded. Run with ⌘R from Xcode. Scheme → Run → Options → StoreKit: PremiumSubscriptions.storekit (under .xcodeproj/xcshareddata/). For App Store builds you need a paid Apple Developer account for In-App Purchase; local .storekit testing does not. IDs: \(PremiumProductID.monthly.rawValue), \(PremiumProductID.annual.rawValue)."
+                return
+            }
+            var map: [String: Package] = [:]
+            for package in current.availablePackages {
+                map[package.storeProduct.productIdentifier] = package
+            }
+            packagesByProductID = map
+            revenueCatStoreProductsByProductID = Dictionary(
+                uniqueKeysWithValues: PremiumProductID.allCases.compactMap { id in
+                    guard let pkg = map[id.rawValue] else { return nil }
+                    return (id.rawValue, pkg.storeProduct)
                 }
+            )
+            products = []
+
+            let allPlansPresent = PremiumProductID.allCases.allSatisfy { map[$0.rawValue] != nil }
+            if !allPlansPresent {
+                lastPurchaseError =
+                    "RevenueCat offering has no packages for your product IDs. Link products \(PremiumProductID.monthly.rawValue) and \(PremiumProductID.annual.rawValue) to the current offering."
             } else {
                 lastPurchaseError = nil
             }
+            debugLogRevenueCatOfferings(
+                offerings: offerings,
+                current: current,
+                map: map,
+                resolvedStoreProductIDs: PremiumProductID.allCases.compactMap { map[$0.rawValue]?.storeProduct.productIdentifier },
+                userError: lastPurchaseError
+            )
         } catch {
+            #if DEBUG
+            print("SubscriptionManager[RC] offerings fetch threw: \(error)")
+            let ns = error as NSError
+            print("SubscriptionManager[RC] NSError domain=\(ns.domain) code=\(ns.code) userInfo=\(ns.userInfo)")
+            #endif
             lastPurchaseError = error.localizedDescription
+            packagesByProductID = [:]
+            revenueCatStoreProductsByProductID = [:]
+            products = []
         }
     }
 
-    /// Loads products if needed, then starts `purchase` — one tap from the paywall.
+    /// Filter Xcode console with `SubscriptionManager[RC]` (Debug builds only).
+    private func debugLogRevenueCatOfferings(
+        offerings: Offerings,
+        current: Offering?,
+        map: [String: Package],
+        resolvedStoreProductIDs: [String],
+        userError: String?
+    ) {
+        #if DEBUG
+        let bundle = Bundle.main.bundleIdentifier ?? "?"
+        let keyLen = RevenueCatConfig.activePublicSDKKey?.count ?? 0
+        print("— SubscriptionManager[RC] offerings diagnostics —")
+        print("SubscriptionManager[RC] bundleID=\(bundle)")
+        print("SubscriptionManager[RC] RevenueCatConfig.isConfigured=\(RevenueCatConfig.isConfigured) apiKeyCharCount=\(keyLen) (full key never logged)")
+        print("SubscriptionManager[RC] appExpectsProductIDs=\(PremiumProductID.allCases.map(\.rawValue))")
+        let offeringIds = offerings.all.keys.sorted()
+        print("SubscriptionManager[RC] offerings.all count=\(offeringIds.count) identifiers=\(offeringIds)")
+        if let cur = current {
+            print("SubscriptionManager[RC] current.identifier=\(cur.identifier)")
+            print("SubscriptionManager[RC] current.availablePackages.count=\(cur.availablePackages.count)")
+            for (idx, pkg) in cur.availablePackages.enumerated() {
+                let sp = pkg.storeProduct
+                print(
+                    "SubscriptionManager[RC]   pkg[\(idx)] packageIdentifier=\(pkg.identifier) packageType=\(String(describing: pkg.packageType)) storeProductID=\(sp.productIdentifier) localizedTitle=\(sp.localizedTitle) localizedPrice=\(sp.localizedPriceString)"
+                )
+            }
+        } else {
+            print("SubscriptionManager[RC] offerings.current is nil (set a Default offering in RevenueCat)")
+        }
+        print("SubscriptionManager[RC] mapKeysFromCurrentPackages=\(map.keys.sorted())")
+        for pid in PremiumProductID.allCases {
+            let pkg = map[pid.rawValue]
+            let sp = pkg?.storeProduct
+            print(
+                "SubscriptionManager[RC] match \(pid.rawValue): hasPackage=\(pkg != nil) storeProduct=\(sp != nil) localizedPrice=\(sp?.localizedPriceString ?? "—")"
+            )
+        }
+        print("SubscriptionManager[RC] paywallStoreProductIDs=\(resolvedStoreProductIDs)")
+        if let userError, !userError.isEmpty {
+            print("SubscriptionManager[RC] userVisibleError=\(userError)")
+        }
+        print("— end SubscriptionManager[RC] —")
+        #endif
+    }
+
+    /// Loads products if needed, then starts purchase — one tap from the paywall.
     func ensureLoadedThenPurchase(selected: PremiumProductID) async {
         lastPurchaseError = nil
-        if product(for: selected) == nil {
-            await loadProducts()
+        restoreFeedback = nil
+        if usesRevenueCat {
+            if package(for: selected) == nil {
+                await loadProducts()
+            }
+            guard let pkg = package(for: selected) else { return }
+            await purchaseRevenueCat(package: pkg)
+        } else {
+            if product(for: selected) == nil {
+                await loadProducts()
+            }
+            guard let product = product(for: selected) else { return }
+            await purchase(product)
         }
-        guard let product = product(for: selected) else { return }
-        await purchase(product)
     }
 
     func refreshEntitlements() async {
-        var premium = false
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
-            if PremiumProductID(rawValue: transaction.productID) != nil {
-                premium = true
-                break
-            }
+        if usesPreviewCatalog { return }
+        guard usesRevenueCat else {
+            applyPremiumState(false)
+            return
         }
-        let wasPremium = isPremium
+        let premium = await premiumFromRevenueCatCustomerInfo()
+        applyPremiumState(premium)
+    }
+
+    private func premiumFromRevenueCatCustomerInfo() async -> Bool {
+        do {
+            let customerInfo = try await Purchases.shared.customerInfo()
+            return customerInfo.entitlements[RevenueCatConfig.premiumEntitlementID]?.isActive == true
+        } catch {
+            return false
+        }
+    }
+
+    private func applyPremiumState(_ premium: Bool) {
         isPremium = premium
-        if wasPremium, !premium {
+        if !premium {
             appState?.applyFreeTierRestrictionsIfNeeded()
         }
         WidgetDataStore.writePremiumUnlocked(premium)
@@ -129,34 +294,34 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func purchase(_ product: Product) async {
+        if usesPreviewCatalog { return }
         lastPurchaseError = nil
+        restoreFeedback = nil
+        guard usesRevenueCat else {
+            lastPurchaseError = "RevenueCat is not configured. Add your public SDK key to Secrets.xcconfig."
+            return
+        }
+        guard let pkg = packagesByProductID[product.id] else {
+            lastPurchaseError = "Could not resolve package for \(product.id). Reload the paywall and try again."
+            return
+        }
+        await purchaseRevenueCat(package: pkg)
+    }
+
+    private func purchaseRevenueCat(package: Package) async {
         do {
-            let result = try await product.purchase()
-            switch result {
-            case .success(let verification):
-                switch verification {
-                case .verified(let transaction):
-                    #if DEBUG
-                    print("SubscriptionManager: purchase success verified id=\(transaction.id) product=\(transaction.productID)")
-                    #endif
-                    await transaction.finish()
-                    await refreshEntitlements()
-                    if isPremium { dismissPaywall() }
-                case .unverified(_, let error):
-                    lastPurchaseError = error.localizedDescription
-                }
-            case .userCancelled:
+            let result = try await Purchases.shared.purchase(package: package)
+            if result.userCancelled {
                 #if DEBUG
-                print("SubscriptionManager: purchase userCancelled")
+                print("SubscriptionManager: RevenueCat purchase userCancelled")
                 #endif
-            case .pending:
-                lastPurchaseError = "Purchase is pending (for example Ask to Buy). Check again after it’s approved."
-                #if DEBUG
-                print("SubscriptionManager: purchase pending")
-                #endif
-            @unknown default:
-                break
+                return
             }
+            restoreFeedback = nil
+            let customerInfo = result.customerInfo
+            let premium = customerInfo.entitlements[RevenueCatConfig.premiumEntitlementID]?.isActive == true
+            applyPremiumState(premium)
+            if isPremium { dismissPaywall() }
         } catch {
             lastPurchaseError = error.localizedDescription
         }
@@ -164,29 +329,39 @@ final class SubscriptionManager: ObservableObject {
 
     func restorePurchases() async {
         lastPurchaseError = nil
+        restoreFeedback = nil
+        if usesPreviewCatalog { return }
+        guard usesRevenueCat else {
+            lastPurchaseError = "RevenueCat is not configured. Add your public SDK key to Secrets.xcconfig."
+            return
+        }
+        isRestoringPurchases = true
+        defer { isRestoringPurchases = false }
         do {
-            try await AppStore.sync()
-            await refreshEntitlements()
-            if isPremium { dismissPaywall() }
+            let customerInfo = try await Purchases.shared.restorePurchases()
+            applyRevenueCatCustomerInfo(customerInfo)
+            if isPremium {
+                restoreFeedback = .premiumUnlocked
+                dismissPaywall()
+            } else {
+                restoreFeedback = .noActiveSubscription
+            }
         } catch {
             lastPurchaseError = error.localizedDescription
         }
     }
 
-    private func listenForTransactionUpdates() async {
-        for await update in Transaction.updates {
-            guard case .verified(let transaction) = update else { continue }
-            await transaction.finish()
-            await refreshEntitlements()
+    // MARK: - PurchasesDelegate
+
+    nonisolated func purchases(_ purchases: Purchases, receivedUpdated customerInfo: CustomerInfo) {
+        Task { @MainActor in
+            self.applyRevenueCatCustomerInfo(customerInfo)
         }
     }
-}
 
-private extension PremiumProductID {
-    var sortIndex: Int {
-        switch self {
-        case .monthly: 0
-        case .annual: 1
-        }
+    private func applyRevenueCatCustomerInfo(_ customerInfo: CustomerInfo) {
+        guard usesRevenueCat else { return }
+        let premium = customerInfo.entitlements[RevenueCatConfig.premiumEntitlementID]?.isActive == true
+        applyPremiumState(premium)
     }
 }

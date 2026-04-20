@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import RevenueCat
 import SwiftUI
 import Supabase
 import WidgetKit
@@ -135,8 +136,22 @@ final class AppState: ObservableObject {
         }
     }
 
+    private func syncRevenueCatAppUserID(_ userId: UUID) async {
+        RevenueCatConfig.configurePurchasesIfNeeded()
+        guard RevenueCatConfig.isConfigured else { return }
+        do {
+            _ = try await Purchases.shared.logIn(userId.uuidString)
+            NotificationCenter.default.post(name: .bibleTodoRevenueCatIdentityChanged, object: nil)
+        } catch {
+            #if DEBUG
+            print("AppState: RevenueCat logIn error \(error)")
+            #endif
+        }
+    }
+
     private func applySignedInUser(userId: UUID, existingProfile: ProfileRow? = nil) async {
         sessionUserId = userId
+        await syncRevenueCatAppUserID(userId)
         guard let repository else { return }
         do {
             let profile: ProfileRow
@@ -222,6 +237,17 @@ final class AppState: ObservableObject {
     }
 
     func signOut() async {
+        RevenueCatConfig.configurePurchasesIfNeeded()
+        if RevenueCatConfig.isConfigured {
+            do {
+                _ = try await Purchases.shared.logOut()
+                NotificationCenter.default.post(name: .bibleTodoRevenueCatIdentityChanged, object: nil)
+            } catch {
+                #if DEBUG
+                print("AppState: RevenueCat logOut error \(error)")
+                #endif
+            }
+        }
         if let client = supabaseClient {
             try? await client.auth.signOut()
         }
