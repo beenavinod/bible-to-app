@@ -88,12 +88,17 @@ struct JourneyView: View {
 
                     WeekProgressView(records: viewModel.weeklyRecords, palette: appState.palette)
 
-                    Button(viewModel.isCalendarExpanded ? "Hide Calendar" : "View Full Calendar") {
+                    Button {
                         viewModel.toggleCalendarExpanded()
+                    } label: {
+                        Text(viewModel.isCalendarExpanded ? "Hide Calendar" : "View Full Calendar")
+                            .font(.subheadline)
+                            .foregroundStyle(appState.palette.accent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .buttonLabelHitRect()
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(appState.palette.accent)
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.plain)
                 }
             }
             .contentShape(Rectangle())
@@ -147,6 +152,7 @@ struct JourneyView: View {
                                 isLockScreenSelected: viewModel.lockScreenWidgetBadgeId == achievement.id,
                                 palette: appState.palette
                             )
+                            .buttonLabelHitRect()
                         }
                         .buttonStyle(.plain)
                     }

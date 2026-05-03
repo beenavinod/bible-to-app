@@ -454,32 +454,33 @@ private struct SharePaletteButton: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
                 .font(.headline)
+                .foregroundStyle(isPrimary ? Color.white : palette.primaryText)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 15)
+                .background {
+                    if isPrimary {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [palette.headerAccent, palette.accent],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .shadow(color: palette.shadow.opacity(0.45), radius: 10, y: 5)
+                    } else {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(palette.card)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(palette.border.opacity(0.85), lineWidth: 1.2)
+                            )
+                            .shadow(color: palette.shadow.opacity(0.25), radius: 8, y: 4)
+                    }
+                }
+                .buttonLabelHitRoundRect(cornerRadius: 16)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isPrimary ? Color.white : palette.primaryText)
-        .background {
-            if isPrimary {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [palette.headerAccent, palette.accent],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .shadow(color: palette.shadow.opacity(0.45), radius: 10, y: 5)
-            } else {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(palette.card)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(palette.border.opacity(0.85), lineWidth: 1.2)
-                    )
-                    .shadow(color: palette.shadow.opacity(0.25), radius: 8, y: 4)
-            }
-        }
     }
 }
 
@@ -586,10 +587,17 @@ struct ShareDrawerSheet: View {
                 .foregroundStyle(palette.primaryText)
 
             HStack {
-                Button("Done") { dismiss() }
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
-                    .buttonStyle(.plain)
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Done")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(palette.primaryText)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 4)
+                        .buttonLabelHitRect()
+                }
+                .buttonStyle(.plain)
                 Spacer()
                 Color.clear
                     .frame(width: 44, height: 1)

@@ -47,15 +47,16 @@ struct WelcomeAuthView: View {
             } label: {
                 Text("Create Account")
                     .font(.headline)
+                    .foregroundStyle(appState.palette.primaryText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(appState.palette.card)
-                    .foregroundStyle(appState.palette.primaryText)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .stroke(appState.palette.border.opacity(0.7), lineWidth: 1.2)
                     )
+                    .buttonLabelHitRoundRect(cornerRadius: 16)
             }
             .buttonStyle(.plain)
         }

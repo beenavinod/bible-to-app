@@ -43,6 +43,7 @@ struct EmailPasswordAuthForm: View {
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .fill(mode == m ? palette.card : Color.clear)
                                 }
+                                .buttonLabelHitRoundRect(cornerRadius: 10)
                         }
                         .buttonStyle(.plain)
                     }
@@ -112,12 +113,14 @@ struct EmailPasswordAuthForm: View {
                     Text(mode == .signIn ? "Sign In" : "Create account")
                         .font(.headline)
                 }
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(palette.headerAccent)
-                .foregroundStyle(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .buttonLabelHitRoundRect(cornerRadius: 16)
             }
+            .buttonStyle(.plain)
             .disabled(isBusy || username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
         }
         .onAppear {

@@ -123,6 +123,7 @@ struct PremiumPaywallCore: View {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(selected ? palette.accent : palette.border.opacity(0.6), lineWidth: selected ? 2.5 : 1)
             )
+            .buttonLabelHitRoundRect(cornerRadius: 16)
         }
         .buttonStyle(.plain)
     }
@@ -228,11 +229,17 @@ struct PremiumPaywallCore: View {
                     ProgressView()
                         .scaleEffect(0.9)
                 }
-                Button("Restore purchases") {
+                Button {
                     Task { await subscription.restorePurchases() }
+                } label: {
+                    Text("Restore purchases")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(palette.accent)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 8)
+                        .buttonLabelHitRect()
                 }
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(palette.accent)
+                .buttonStyle(.plain)
                 .disabled(subscription.isRestoringPurchases || subscription.isLoadingProducts)
             }
             .frame(maxWidth: .infinity)
@@ -261,40 +268,42 @@ struct PremiumPaywallCore: View {
                     }
                 }
                 .font(.headline)
+                .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [palette.headerAccent, palette.accent],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                )
+                .buttonLabelHitRoundRect(cornerRadius: 16)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Color.white)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [palette.headerAccent, palette.accent],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-            )
             .disabled(subscription.isLoadingProducts || subscription.isRestoringPurchases)
 
             if showSkipButton, let onSkip {
                 Button(action: onSkip) {
                     Text("Skip")
                         .font(.headline)
+                        .foregroundStyle(palette.primaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(palette.card)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .strokeBorder(palette.border.opacity(0.85), lineWidth: 1.2)
+                                )
+                        )
+                        .buttonLabelHitRoundRect(cornerRadius: 16)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(palette.primaryText)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(palette.card)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(palette.border.opacity(0.85), lineWidth: 1.2)
-                        )
-                )
             }
         }
         .padding(.top, 4)

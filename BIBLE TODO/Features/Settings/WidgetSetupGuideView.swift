@@ -544,6 +544,9 @@ private struct HomeScreenGuideDemo: View {
                     Text("Cancel")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.blue)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 6)
+                        .buttonLabelHitRect()
                 }
                 .buttonStyle(.plain)
                 Spacer()

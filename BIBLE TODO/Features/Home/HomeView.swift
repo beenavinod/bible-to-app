@@ -218,6 +218,7 @@ struct HomeView: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(fg.glassStroke, lineWidth: 1)
                 )
+                .buttonLabelHitRoundRect(cornerRadius: 14)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)

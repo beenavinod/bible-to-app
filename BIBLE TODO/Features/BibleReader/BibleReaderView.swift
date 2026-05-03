@@ -156,6 +156,7 @@ struct BibleReaderView: View {
                     .frame(width: 44, height: 44)
                     .background(Circle().fill(palette.chromeFill))
                     .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                    .buttonLabelHitCircle()
             }
             .buttonStyle(.plain)
 
@@ -170,6 +171,7 @@ struct BibleReaderView: View {
                     .frame(width: 44, height: 44)
                     .background(Circle().fill(palette.chromeFill))
                     .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                    .buttonLabelHitCircle()
             }
             .buttonStyle(.plain)
         }
@@ -196,6 +198,7 @@ struct BibleReaderView: View {
                         Capsule(style: .continuous)
                             .stroke(palette.bottomPillStroke, lineWidth: 1)
                     )
+                    .buttonLabelHitCapsule()
             }
             .buttonStyle(.plain)
 
@@ -247,6 +250,7 @@ private struct BibleBookChapterPickerSheet: View {
                             .frame(width: 36, height: 36)
                             .background(Circle().fill(appPalette.card))
                             .overlay(Circle().stroke(appPalette.border.opacity(0.55), lineWidth: 1))
+                            .buttonLabelHitCircle()
                     }
                 }
                 ToolbarItem(placement: .principal) {
@@ -305,6 +309,7 @@ private struct BibleBookChapterPickerSheet: View {
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .stroke(isOn ? appPalette.accent : appPalette.border.opacity(0.45), lineWidth: isOn ? 2 : 1)
                                 )
+                                .buttonLabelHitRoundRect(cornerRadius: 10)
                         }
                         .buttonStyle(.plain)
                     }
@@ -336,10 +341,17 @@ private struct BibleReaderOptionsSheet: View {
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(appPalette.primaryText)
                     Spacer()
-                    Button("Done") { dismiss() }
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(appPalette.accent)
-                        .buttonStyle(.plain)
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Done")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(appPalette.accent)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 6)
+                            .buttonLabelHitRect()
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.top, 4)
 
@@ -455,6 +467,8 @@ private struct BibleReaderOptionsSheet: View {
                                 .foregroundStyle(theme == .midnight ? Color.white : appPalette.accent)
                         }
                     }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .buttonLabelHitCapsule()
                 }
                 .buttonStyle(.plain)
             }

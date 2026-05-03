@@ -1481,11 +1481,12 @@ private struct OnboardingAuthScreen: View {
                     } label: {
                         Text("Continue")
                             .font(.headline)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                             .background(palette.headerAccent)
-                            .foregroundStyle(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .buttonLabelHitRoundRect(cornerRadius: 16)
                     }
                     .buttonStyle(.plain)
                     .opacity(showContent ? 1 : 0)
@@ -1673,6 +1674,7 @@ private struct OnboardingOptionButton: View {
                     .stroke(isSelected ? palette.accent.opacity(0.72) : palette.border.opacity(0.74), lineWidth: 1.2)
             )
             .shadow(color: palette.shadow.opacity(isSelected ? 0.38 : 0.18), radius: isSelected ? 16 : 10, x: 0, y: 8)
+            .buttonLabelHitRoundRect(cornerRadius: 18)
         }
         .buttonStyle(.plain)
     }
@@ -1708,6 +1710,7 @@ private struct OnboardingPrimaryButton: View {
                 )
             )
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .buttonLabelHitRoundRect(cornerRadius: 20)
             .shadow(color: palette.shadow.opacity(isDisabled ? 0.12 : 0.34), radius: 18, x: 0, y: 10)
         }
         .disabled(isDisabled)

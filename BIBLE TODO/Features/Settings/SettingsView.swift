@@ -61,21 +61,22 @@ struct SettingsView: View {
                 } label: {
                     Text("See plans")
                         .font(.headline)
+                        .foregroundStyle(Color.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [appState.palette.headerAccent, appState.palette.accent],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        )
+                        .buttonLabelHitRoundRect(cornerRadius: 14)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(Color.white)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [appState.palette.headerAccent, appState.palette.accent],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                )
             }
         }
     }
@@ -122,6 +123,7 @@ struct SettingsView: View {
                                     : appState.palette.accent
                             )
                     }
+                    .buttonLabelHitRoundRect(cornerRadius: 10)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isLocked ? "\(widget.name), premium" : "How to add \(widget.name)")
@@ -156,6 +158,8 @@ struct SettingsView: View {
                                 .fill(appState.palette.accentSecondary.opacity(0.12))
                         )
                     }
+                    .padding(.vertical, 4)
+                    .buttonLabelHitRect()
                 }
                 .buttonStyle(.plain)
             } else {
@@ -188,15 +192,16 @@ struct SettingsView: View {
                 } label: {
                     Text("Open premium paywall")
                         .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(appState.palette.accent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(appState.palette.border.opacity(0.85), lineWidth: 1.2)
+                        )
+                        .buttonLabelHitRoundRect(cornerRadius: 12)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(appState.palette.accent)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(appState.palette.border.opacity(0.85), lineWidth: 1.2)
-                )
             }
         }
     }
@@ -216,6 +221,8 @@ struct SettingsView: View {
                         Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
                             .foregroundStyle(appState.palette.primaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 12)
+                            .buttonLabelHitRect()
                     }
                     .buttonStyle(.plain)
                 } else if appState.isSupabaseConfigured {

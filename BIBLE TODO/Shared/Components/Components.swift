@@ -221,6 +221,8 @@ struct TopBar: View {
                         Image(systemName: "photo.on.rectangle.angled")
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
+                            .frame(width: 44, height: 44)
+                            .buttonLabelHitRect()
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Home background")
@@ -231,6 +233,8 @@ struct TopBar: View {
                         Image(systemName: "square.and.arrow.up")
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
+                            .frame(width: 44, height: 44)
+                            .buttonLabelHitRect()
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Share")
@@ -584,6 +588,9 @@ struct BadgeDetailSheet: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(palette.accent)
                     .fixedSize(horizontal: true, vertical: false)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 4)
+                    .buttonLabelHitRect()
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Close")
@@ -626,6 +633,7 @@ struct BadgeDetailSheet: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
+                        .buttonLabelHitRoundRect(cornerRadius: 12)
                 }
                 .buttonStyle(.bordered)
                 .tint(palette.secondaryText)
@@ -638,6 +646,7 @@ struct BadgeDetailSheet: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
+                        .buttonLabelHitRoundRect(cornerRadius: 12)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(palette.headerAccent)
@@ -780,6 +789,7 @@ struct BadgeUnlockedSheet: View {
                             )
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .buttonLabelHitRoundRect(cornerRadius: 20)
                         .shadow(color: palette.shadow.opacity(0.34), radius: 18, x: 0, y: 10)
                 }
                 .buttonStyle(.plain)

@@ -16,6 +16,8 @@ struct CalendarSectionView: View {
                 Button(action: onPrevious) {
                     Image(systemName: "chevron.left")
                         .foregroundStyle(palette.secondaryText)
+                        .frame(width: 44, height: 44)
+                        .buttonLabelHitRect()
                 }
                 .buttonStyle(.plain)
 
@@ -30,6 +32,8 @@ struct CalendarSectionView: View {
                 Button(action: onNext) {
                     Image(systemName: "chevron.right")
                         .foregroundStyle(palette.secondaryText)
+                        .frame(width: 44, height: 44)
+                        .buttonLabelHitRect()
                 }
                 .buttonStyle(.plain)
             }
@@ -92,5 +96,6 @@ struct CalendarSectionView: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(isCompleted ? palette.accent.opacity(0.9) : .clear)
             )
+            .buttonLabelHitRoundRect(cornerRadius: 10)
     }
 }

@@ -24,6 +24,7 @@ struct HomeBackgroundPickerSheet: View {
                         .foregroundStyle(titleBrown.opacity(0.75))
                         .frame(width: 36, height: 36)
                         .background(Circle().fill(Color.white.opacity(0.65)))
+                        .buttonLabelHitCircle()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close")
@@ -162,6 +163,7 @@ struct HomeBackgroundPickerSheet: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
+            .buttonLabelHitRect()
         }
         .buttonStyle(.plain)
     }
