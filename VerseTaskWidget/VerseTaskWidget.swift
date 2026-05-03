@@ -88,7 +88,7 @@ struct VerseTaskWidgetEntryView: View {
 
     var body: some View {
         content
-            .padding(family == .systemSmall ? 14 : 18)
+            .padding(family == .systemSmall ? 6 : 8)
             .containerBackground(for: .widget) {
                 LinearGradient(
                     colors: [WidgetPalette.canvasTop, WidgetPalette.canvasBottom],
@@ -150,47 +150,40 @@ struct VerseTaskWidgetEntryView: View {
     }
 
     private var smallWidget: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("DAILY VERSE")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(WidgetPalette.secondaryText)
-
+        VStack(alignment: .leading, spacing: 6) {
             Text("\"\(entry.verseText)\"")
                 .font(.system(size: 14, weight: .medium, design: .serif))
                 .foregroundStyle(WidgetPalette.primaryText)
                 .lineSpacing(3)
-                .lineLimit(4)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 4)
 
             Text(entry.reference)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(WidgetPalette.accentDark)
-                .lineLimit(1)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
         }
     }
 
     private var mediumWidget: some View {
         Group {
             if entry.taskTitle.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("DAILY VERSE")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(WidgetPalette.secondaryText)
-
+                VStack(alignment: .leading, spacing: 6) {
                     Text("\"\(entry.verseText)\"")
                         .font(.system(size: 17, weight: .medium, design: .serif))
                         .foregroundStyle(WidgetPalette.primaryText)
                         .lineSpacing(4)
-                        .lineLimit(6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                     Text(entry.reference)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(WidgetPalette.accentDark)
-                        .lineLimit(2)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.85)
 
-                    Spacer(minLength: 0)
+                    Spacer(minLength: 4)
 
                     Text("Open Bible Life to unlock today’s task with Premium.")
                         .font(.system(size: 11, weight: .medium))
@@ -199,22 +192,19 @@ struct VerseTaskWidgetEntryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             } else {
-                HStack(spacing: 14) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("DAILY VERSE")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(WidgetPalette.secondaryText)
-
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("\"\(entry.verseText)\"")
                             .font(.system(size: 16, weight: .medium, design: .serif))
                             .foregroundStyle(WidgetPalette.primaryText)
                             .lineSpacing(4)
-                            .lineLimit(5)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
                         Text(entry.reference)
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(WidgetPalette.accentDark)
-                            .lineLimit(1)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.85)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
