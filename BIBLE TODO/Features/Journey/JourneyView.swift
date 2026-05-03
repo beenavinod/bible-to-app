@@ -2,6 +2,7 @@ import SwiftUI
 
 struct JourneyView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
     @ObservedObject private var viewModel: JourneyViewModel
     @State private var sharePayload: ShareDrawerPayload?
     @State private var selectedBadge: Achievement?
@@ -21,8 +22,12 @@ struct JourneyView: View {
                         subtitle: nil,
                         palette: appState.palette,
                         onShareTap: {
-                            sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
-                            appState.awardFirstShareBadgeIfNeeded()
+                            if subscription.isPremium {
+                                sharePayload = .streak(viewModel.summary, week: viewModel.weeklyRecords)
+                                appState.awardFirstShareBadgeIfNeeded()
+                            } else {
+                                subscription.presentPaywall()
+                            }
                         }
                     )
 
@@ -43,15 +48,22 @@ struct JourneyView: View {
             ShareDrawerSheet(payload: payload, palette: appState.palette)
                 .presentationDetents([.height(520), .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(appState.palette.canvas)
+                .presentationBackgroundInteraction(.disabled)
         }
         .sheet(item: $selectedBadge) { badge in
             BadgeDetailSheet(
                 achievement: badge,
                 unlocked: viewModel.isBadgeEarned(badge),
-                palette: appState.palette
+                isLockScreenSelected: viewModel.lockScreenWidgetBadgeId == badge.id,
+                palette: appState.palette,
+                onSelectForLockScreen: { viewModel.setLockScreenWidgetBadgeId(badge.id) },
+                onClearLockScreenSelection: { viewModel.setLockScreenWidgetBadgeId(nil) }
             )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
+                .presentationDetents([.height(640), .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(appState.palette.canvas)
+                .presentationBackgroundInteraction(.disabled)
         }
     }
 
@@ -76,13 +88,23 @@ struct JourneyView: View {
 
                     WeekProgressView(records: viewModel.weeklyRecords, palette: appState.palette)
 
-                    Button(viewModel.isCalendarExpanded ? "Hide Calendar" : "View Full Calendar") {
+                    Button {
                         viewModel.toggleCalendarExpanded()
+                    } label: {
+                        Text(viewModel.isCalendarExpanded ? "Hide Calendar" : "View Full Calendar")
+                            .font(.subheadline)
+                            .foregroundStyle(appState.palette.accent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .buttonLabelHitRect()
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(appState.palette.accent)
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.plain)
                 }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard !subscription.isPremium else { return }
+                subscription.presentPaywall()
             }
         }
     }
@@ -111,20 +133,26 @@ struct JourneyView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(appState.palette.primaryText)
 
-                Text("Earn badges by building streaks and sharing God's word.")
+                Text("Earn badges by building streaks and sharing. Tap one to choose which unlocked badge appears on the Lock Screen widget.")
                     .font(.subheadline)
                     .foregroundStyle(appState.palette.secondaryText)
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: 4), spacing: 18) {
                     ForEach(sortedAchievements.prefix(4)) { achievement in
                         Button {
-                            selectedBadge = achievement
+                            if !viewModel.isBadgeEarned(achievement), !subscription.isPremium {
+                                subscription.presentPaywall()
+                            } else {
+                                selectedBadge = achievement
+                            }
                         } label: {
                             AchievementBadgeView(
                                 achievement: achievement,
                                 unlocked: viewModel.isBadgeEarned(achievement),
+                                isLockScreenSelected: viewModel.lockScreenWidgetBadgeId == achievement.id,
                                 palette: appState.palette
                             )
+                            .buttonLabelHitRect()
                         }
                         .buttonStyle(.plain)
                     }

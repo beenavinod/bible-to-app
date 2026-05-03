@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var navigationPath = NavigationPath()
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
 
     var body: some View {
         Group {
@@ -10,29 +11,51 @@ struct ContentView: View {
             case .configurationRequired:
                 configurationRequiredView
             case .launching:
-                launchSplash
+                launchSplash(showsProgress: true)
             case .needsAuth:
                 WelcomeAuthView()
                     .environmentObject(appState)
             case .onboarding:
                 OnboardingFlowView()
                     .environmentObject(appState)
+                    .environmentObject(subscription)
             case .main:
                 if appState.hasCompletedOnboarding, let tabs = appState.mainTabViewModels {
                     mainChrome(tabs: tabs)
                         .id(appState.authSessionRevision)
+                        .sheet(isPresented: paywallBinding) {
+                            PremiumPaywallView()
+                                .environmentObject(subscription)
+                                .environmentObject(appState)
+                                .presentationDetents([.large])
+                                .presentationDragIndicator(.visible)
+                        }
                 } else if !appState.hasCompletedOnboarding {
                     OnboardingFlowView()
                         .environmentObject(appState)
+                        .environmentObject(subscription)
                 } else {
-                    launchSplash
+                    launchSplash(showsProgress: false)
                 }
             }
         }
+        .task {
+            subscription.configure(appState: appState)
+        }
     }
 
-    private var launchSplash: some View {
-        ZStack {
+    private var paywallBinding: Binding<Bool> {
+        Binding(
+            get: { subscription.isPresentingPaywall },
+            set: { newValue in
+                if !newValue { subscription.dismissPaywall() }
+            }
+        )
+    }
+
+    private func launchSplash(showsProgress: Bool) -> some View {
+        let ink = Color(red: 0.34, green: 0.30, blue: 0.24)
+        return ZStack {
             Color("LaunchBackground")
                 .ignoresSafeArea()
 
@@ -45,7 +68,13 @@ struct ContentView: View {
 
                 Text("Bible Life")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color(red: 0.34, green: 0.30, blue: 0.24))
+                    .foregroundStyle(ink)
+
+                if showsProgress {
+                    ProgressView()
+                        .tint(ink)
+                        .padding(.top, 4)
+                }
             }
         }
     }
@@ -64,25 +93,32 @@ struct ContentView: View {
     }
 
     private func mainChrome(tabs: TabViewModelsContainer) -> some View {
-        NavigationStack(path: $navigationPath) {
-            HomeView(viewModel: tabs.home, path: $navigationPath)
-                .environmentObject(appState)
-                .navigationDestination(for: MainRoute.self) { route in
-                    switch route {
-                    case .journey:
-                        JourneyView(viewModel: tabs.journey)
-                            .environmentObject(appState)
-                    case .settings:
-                        SettingsView(appState: appState)
-                            .environmentObject(appState)
+        ZStack {
+            NavigationStack(path: $navigationPath) {
+                HomeView(viewModel: tabs.home, path: $navigationPath)
+                    .environmentObject(appState)
+                    .navigationDestination(for: MainRoute.self) { route in
+                        switch route {
+                        case .journey:
+                            JourneyView(viewModel: tabs.journey)
+                                .environmentObject(appState)
+                        case .settings:
+                            SettingsView(appState: appState)
+                                .environmentObject(appState)
+                        }
                     }
-                }
+            }
+
+            if tabs.home.isLoadingInitialContent {
+                launchSplash(showsProgress: true)
+                    .transition(.opacity)
+            }
         }
     }
 }
 
 #Preview {
-    AppStatePreviewRoot { _ in
+    AppStatePreviewRoot { _, _ in
         ContentView()
     }
 }
@@ -90,14 +126,16 @@ struct ContentView: View {
 /// Single `AppState` instance for previews so `StateObject` / `EnvironmentObject` stay in sync.
 struct AppStatePreviewRoot<Content: View>: View {
     @StateObject private var appState = AppState(swiftUIPreviewPersistence: PreviewPersistence())
-    @ViewBuilder private let content: (AppState) -> Content
+    @StateObject private var subscription = SubscriptionManager.forSwiftUIPreviews()
+    @ViewBuilder private let content: (AppState, SubscriptionManager) -> Content
 
-    init(@ViewBuilder content: @escaping (AppState) -> Content) {
+    init(@ViewBuilder content: @escaping (AppState, SubscriptionManager) -> Content) {
         self.content = content
     }
 
     var body: some View {
-        content(appState)
+        content(appState, subscription)
             .environmentObject(appState)
+            .environmentObject(subscription)
     }
 }

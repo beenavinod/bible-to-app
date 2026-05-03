@@ -25,4 +25,8 @@ protocol AppPersistence {
     /// Extra line spacing in points, 0 … 18, default 4
     func bibleReaderLineSpacingExtra() -> Double
     func setBibleReaderLineSpacingExtra(_ value: Double)
+
+    /// `badge_definitions.id` for the single achievement shown on the Lock Screen widget (`nil` = none).
+    func lockScreenWidgetBadgeId() -> Int?
+    func setLockScreenWidgetBadgeId(_ id: Int?)
 }

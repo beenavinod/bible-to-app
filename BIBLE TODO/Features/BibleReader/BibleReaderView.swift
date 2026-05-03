@@ -8,7 +8,7 @@ struct BibleReaderView: View {
 
     @State private var showBookPicker = false
     @State private var showReaderOptions = false
-    @State private var expandedBookName: String?
+    @State private var expandedBookNames: Set<String> = []
 
     init(
         onDismiss: @escaping () -> Void,
@@ -56,16 +56,16 @@ struct BibleReaderView: View {
                             Text(err)
                                 .font(.subheadline)
                                 .foregroundStyle(palette.body.opacity(0.85))
-                                .padding(.horizontal, 24)
+                                .padding(.horizontal, 14)
                                 .padding(.top, 100)
                         } else {
                             VStack(alignment: .leading, spacing: 6) {
                                 ForEach(model.verses, id: \.n) { verse in
-                                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                    HStack(alignment: .firstTextBaseline, spacing: 8) {
                                         Text("\(verse.n)")
                                             .font(.system(size: verseNumSize, weight: .medium, design: .rounded))
                                             .foregroundStyle(palette.verseNumber)
-                                            .frame(width: 32, alignment: .trailing)
+                                            .frame(width: 26, alignment: .trailing)
 
                                         Text(verse.t)
                                             .font(.system(size: bodyPointSize, weight: .regular, design: .serif))
@@ -74,7 +74,7 @@ struct BibleReaderView: View {
                                             .multilineTextAlignment(.leading)
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                     }
-                                    .padding(.horizontal, 22)
+                                    .padding(.horizontal, 12)
                                     .id("verse-\(verse.n)")
                                 }
                             }
@@ -87,7 +87,7 @@ struct BibleReaderView: View {
                             Text(model.copyright)
                                 .font(.caption2)
                                 .foregroundStyle(palette.verseNumber)
-                                .padding(.horizontal, 24)
+                                .padding(.horizontal, 14)
                                 .padding(.bottom, 32)
                         }
                     }
@@ -117,13 +117,16 @@ struct BibleReaderView: View {
         .task {
             await model.loadIndexAndChapter()
         }
+        .onDisappear {
+            model.flushReaderAppearancePersistence()
+        }
         .sheet(isPresented: $showBookPicker) {
             BibleBookChapterPickerSheet(
                 appPalette: appPalette,
                 books: model.booksTOC,
                 selectedBook: model.book,
                 selectedChapter: model.chapter,
-                expandedBookName: $expandedBookName,
+                expandedBookNames: $expandedBookNames,
                 onSelect: { book, chapter in
                     model.selectChapter(book: book, chapter: chapter)
                     showBookPicker = false
@@ -132,13 +135,15 @@ struct BibleReaderView: View {
             )
             .presentationDragIndicator(.visible)
             .onAppear {
-                expandedBookName = model.book
+                expandedBookNames = [model.book]
             }
         }
         .sheet(isPresented: $showReaderOptions) {
             BibleReaderOptionsSheet(model: model, appPalette: appPalette)
                 .presentationDetents([.height(340)])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(appPalette.card)
+                .presentationBackgroundInteraction(.disabled)
         }
     }
 
@@ -151,6 +156,7 @@ struct BibleReaderView: View {
                     .frame(width: 44, height: 44)
                     .background(Circle().fill(palette.chromeFill))
                     .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                    .buttonLabelHitCircle()
             }
             .buttonStyle(.plain)
 
@@ -165,6 +171,7 @@ struct BibleReaderView: View {
                     .frame(width: 44, height: 44)
                     .background(Circle().fill(palette.chromeFill))
                     .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                    .buttonLabelHitCircle()
             }
             .buttonStyle(.plain)
         }
@@ -191,6 +198,7 @@ struct BibleReaderView: View {
                         Capsule(style: .continuous)
                             .stroke(palette.bottomPillStroke, lineWidth: 1)
                     )
+                    .buttonLabelHitCapsule()
             }
             .buttonStyle(.plain)
 
@@ -208,7 +216,7 @@ private struct BibleBookChapterPickerSheet: View {
     let books: [BibleBookTOC]
     let selectedBook: String
     let selectedChapter: Int
-    @Binding var expandedBookName: String?
+    @Binding var expandedBookNames: Set<String>
     let onSelect: (String, Int) -> Void
     let onClose: () -> Void
 
@@ -242,6 +250,7 @@ private struct BibleBookChapterPickerSheet: View {
                             .frame(width: 36, height: 36)
                             .background(Circle().fill(appPalette.card))
                             .overlay(Circle().stroke(appPalette.border.opacity(0.55), lineWidth: 1))
+                            .buttonLabelHitCircle()
                     }
                 }
                 ToolbarItem(placement: .principal) {
@@ -254,10 +263,14 @@ private struct BibleBookChapterPickerSheet: View {
     }
 
     private func bookRow(_ book: BibleBookTOC) -> some View {
-        let expanded = expandedBookName == book.name
+        let expanded = expandedBookNames.contains(book.name)
         return VStack(alignment: .leading, spacing: 0) {
             Button {
-                expandedBookName = expanded ? nil : book.name
+                if expanded {
+                    expandedBookNames.remove(book.name)
+                } else {
+                    expandedBookNames.insert(book.name)
+                }
             } label: {
                 HStack {
                     Text(book.name)
@@ -296,6 +309,7 @@ private struct BibleBookChapterPickerSheet: View {
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .stroke(isOn ? appPalette.accent : appPalette.border.opacity(0.45), lineWidth: isOn ? 2 : 1)
                                 )
+                                .buttonLabelHitRoundRect(cornerRadius: 10)
                         }
                         .buttonStyle(.plain)
                     }
@@ -317,27 +331,43 @@ private struct BibleReaderOptionsSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(alignment: .center) {
-                Text("Reading")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(appPalette.primaryText)
-                Spacer()
-                Button("Done") { dismiss() }
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(appPalette.accent)
-            }
-            .padding(.top, 4)
+        ZStack {
+            appPalette.card
+                .ignoresSafeArea()
 
-            fontSizeRow
-            lineSpacingRow
-            themeRow
-            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .center) {
+                    Text("Reading")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(appPalette.primaryText)
+                    Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Done")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(appPalette.accent)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 6)
+                            .buttonLabelHitRect()
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 4)
+
+                fontSizeRow
+                lineSpacingRow
+                themeRow
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(appPalette.card)
+        .compositingGroup()
+        .onDisappear {
+            model.flushReaderAppearancePersistence()
+        }
     }
 
     private var fontSizeRow: some View {
@@ -345,8 +375,14 @@ private struct BibleReaderOptionsSheet: View {
             Text("A")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(appPalette.accent)
-            Slider(value: fontScaleBinding, in: 0.85 ... 1.45)
-                .tint(appPalette.accent)
+            PlainContinuousSlider(
+                value: fontScaleBinding,
+                range: 0.85 ... 1.45,
+                trackColor: appPalette.border.opacity(0.45),
+                fillColor: appPalette.accent.opacity(0.35),
+                thumbFill: appPalette.card,
+                thumbStroke: appPalette.accent.opacity(0.9)
+            )
             Text("A")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(appPalette.accent)
@@ -356,8 +392,14 @@ private struct BibleReaderOptionsSheet: View {
     private var lineSpacingRow: some View {
         HStack(spacing: 14) {
             lineSpacingIcon(compact: true)
-            Slider(value: lineSpacingBinding, in: 0 ... 16)
-                .tint(appPalette.accent)
+            PlainContinuousSlider(
+                value: lineSpacingBinding,
+                range: 0 ... 16,
+                trackColor: appPalette.border.opacity(0.45),
+                fillColor: appPalette.accent.opacity(0.35),
+                thumbFill: appPalette.card,
+                thumbStroke: appPalette.accent.opacity(0.9)
+            )
             lineSpacingIcon(compact: false)
         }
     }
@@ -425,10 +467,73 @@ private struct BibleReaderOptionsSheet: View {
                                 .foregroundStyle(theme == .midnight ? Color.white : appPalette.accent)
                         }
                     }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .buttonLabelHitCapsule()
                 }
                 .buttonStyle(.plain)
             }
         }
+    }
+}
+
+// MARK: - Custom reading controls (avoids system `Slider` styling artifacts)
+
+private struct PlainContinuousSlider: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let trackColor: Color
+    let fillColor: Color
+    let thumbFill: Color
+    let thumbStroke: Color
+
+    private let thumbDiameter: CGFloat = 22
+    private let trackHeight: CGFloat = 6
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = max(1, geo.size.width)
+            let midY = geo.size.height / 2
+            let span = range.upperBound - range.lowerBound
+            let t = span > 0 ? (value - range.lowerBound) / span : 0
+            let tClamped = min(1, max(0, t))
+            let travel = width - thumbDiameter
+            let thumbLeading = travel * CGFloat(tClamped)
+            let thumbCenterX = thumbLeading + thumbDiameter / 2
+            let fillWidth = max(trackHeight / 2, thumbCenterX)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(trackColor)
+                    .frame(height: trackHeight)
+                    .position(x: width / 2, y: midY)
+
+                Capsule()
+                    .fill(fillColor)
+                    .frame(width: fillWidth, height: trackHeight)
+                    .position(x: fillWidth / 2, y: midY)
+
+                Circle()
+                    .fill(thumbFill)
+                    .frame(width: thumbDiameter, height: thumbDiameter)
+                    .overlay(Circle().stroke(thumbStroke, lineWidth: 1))
+                    .position(x: thumbCenterX, y: midY)
+            }
+            .frame(width: width, height: geo.size.height)
+            .contentShape(Rectangle())
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { gesture in
+                        let x = min(width, max(0, gesture.location.x))
+                        var tx = Transaction()
+                        tx.animation = nil
+                        let ratio = x / width
+                        withTransaction(tx) {
+                            value = range.lowerBound + Double(ratio) * span
+                        }
+                    }
+            )
+        }
+        .frame(height: 28)
     }
 }
 

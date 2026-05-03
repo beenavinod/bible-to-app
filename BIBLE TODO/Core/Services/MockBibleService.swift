@@ -9,9 +9,9 @@ final class MockBibleService: BibleService {
         records = MockBibleService.makeRecords()
     }
 
-    func fetchTodayVerse() async throws -> Verse {
+    func fetchTodayDailyRecord() async throws -> DailyRecord {
         try await Task.sleep(for: .milliseconds(120))
-        return records.first(where: { calendar.isDateInToday($0.verse.date) })?.verse ?? records[0].verse
+        return records.first(where: { calendar.isDateInToday($0.verse.date) }) ?? records[0]
     }
 
     func fetchHistory() async throws -> [DailyRecord] {
@@ -22,10 +22,7 @@ final class MockBibleService: BibleService {
     func fetchStreakSummary() async throws -> StreakSummary {
         try await Task.sleep(for: .milliseconds(100))
         let completedRecords = records.filter(\.completed)
-        let currentStreak = records
-            .sorted { $0.verse.date > $1.verse.date }
-            .prefix { $0.completed }
-            .count
+        let currentStreak = StreakCalculation.consecutiveCompletedDayStreak(records: records)
 
         return StreakSummary(
             currentStreak: currentStreak,
@@ -40,6 +37,10 @@ final class MockBibleService: BibleService {
 
     func fetchUserEarnedBadgeIds() async throws -> Set<Int> {
         []
+    }
+
+    func fetchBadgeDefinition(id: Int) async throws -> Achievement? {
+        BadgeIcons.fallbackCatalog.first(where: { $0.id == id })
     }
 
     func awardBadge(badgeDefinitionId: Int) async throws {}

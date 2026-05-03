@@ -44,9 +44,9 @@ final class SupabaseBibleService: BibleService {
         self.repository = repository
     }
 
-    func fetchTodayVerse() async throws -> Verse {
+    func fetchTodayDailyRecord() async throws -> DailyRecord {
         let cache = try await repository.loadDailyContent(userId: userId, category: category)
-        return cache.toDailyRecord().verse
+        return cache.toDailyRecord()
     }
 
     func fetchHistory() async throws -> [DailyRecord] {
@@ -67,6 +67,11 @@ final class SupabaseBibleService: BibleService {
 
     func fetchUserEarnedBadgeIds() async throws -> Set<Int> {
         try await repository.fetchUserEarnedBadgeIds(userId: userId)
+    }
+
+    func fetchBadgeDefinition(id: Int) async throws -> Achievement? {
+        guard let row = try await repository.fetchBadgeDefinition(id: id) else { return nil }
+        return row.toAchievement()
     }
 
     func awardBadge(badgeDefinitionId: Int) async throws {

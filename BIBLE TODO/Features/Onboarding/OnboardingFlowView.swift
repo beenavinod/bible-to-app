@@ -2,12 +2,16 @@ import SwiftUI
 
 struct OnboardingFlowView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var subscription: SubscriptionManager
 
     @State private var currentStep = 0
     @State private var draftName = ""
     @State private var selections: [String: String] = [:]
     @State private var multiSelections: [String: Set<String>] = [:]
     @State private var showBadgeUnlocked = false
+    @State private var onboardingPaywallSelection: PremiumProductID = .annual
+    /// Avoids scheduling `completeOnboarding` twice if `isPremium` and `currentStep` updates overlap.
+    @State private var didScheduleOnboardingCompletionFromPaywall = false
 
     /// Flow matches onboarding spec: loader → personalization → Pain–Gap–Truth → … → first task → save → paywall.
     private let totalSteps = 31
@@ -46,6 +50,20 @@ struct OnboardingFlowView: View {
                 }
             )
             .interactiveDismissDisabled()
+        }
+        .onChange(of: currentStep) { oldStep, newStep in
+            guard newStep == 30 else { return }
+            if oldStep != newStep {
+                didScheduleOnboardingCompletionFromPaywall = false
+            }
+            advanceOnboardingFromPaywallIfNeeded()
+        }
+        .onChange(of: subscription.isPremium) { _, isPremium in
+            if currentStep == 30, !isPremium {
+                didScheduleOnboardingCompletionFromPaywall = false
+            }
+            guard isPremium else { return }
+            advanceOnboardingFromPaywallIfNeeded()
         }
     }
 
@@ -97,7 +115,7 @@ struct OnboardingFlowView: View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.bottom, currentStep == 30 ? 4 : 12)
     }
 
     private var progressValue: CGFloat {
@@ -613,6 +631,14 @@ struct OnboardingFlowView: View {
         }
     }
 
+    /// Paywall (step 30) is embedded here, not in `PremiumPaywallView`, so `dismissPaywall()` does not advance the flow. **Skip** calls `advance` directly; subscribe/restore must react to `isPremium`.
+    private func advanceOnboardingFromPaywallIfNeeded() {
+        guard currentStep == 30, subscription.isPremium else { return }
+        guard !didScheduleOnboardingCompletionFromPaywall else { return }
+        didScheduleOnboardingCompletionFromPaywall = true
+        advance()
+    }
+
     private func select(_ option: String, key: String, completesFlow: Bool = false) {
         selections[key] = option
         Task { @MainActor in
@@ -684,6 +710,9 @@ struct OnboardingFlowView: View {
             buttonTitle: "Mark as Complete",
             buttonIcon: nil,
             topIcon: nil,
+            showsFooterContinue: true,
+            titleFont: nil,
+            topScrollSpacer: nil,
             palette: appState.palette,
             card: {
                 AnyView(
@@ -706,18 +735,27 @@ struct OnboardingFlowView: View {
         messageScreen(
             stepKey: stepKey,
             eyebrow: nil,
-            title: "Go deeper with Live the Word",
-            subtitle: nil,
+            title: "Go deeper with Bible Life",
+            subtitle: "Subscribe anytime — or continue free and upgrade later in Settings.",
             card: {
-                OnboardingHeroCard {
-                    Text("Paywall placeholder — pricing and plans TBD.")
-                        .font(.title3.weight(.medium))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(appState.palette.secondaryText)
-                }
+                AnyView(
+                    PremiumPaywallCore(
+                        selectedProductID: $onboardingPaywallSelection,
+                        compact: true,
+                        showSkipButton: true,
+                        onSkip: advance
+                    )
+                    .environmentObject(subscription)
+                    .environmentObject(appState)
+                )
             },
             footer: nil,
-            buttonTitle: "Continue"
+            buttonTitle: "",
+            buttonIcon: nil,
+            topIcon: nil,
+            showsFooterContinue: false,
+            titleFont: .system(.title, design: .serif, weight: .semibold),
+            topScrollSpacer: 10
         )
     }
 
@@ -730,7 +768,10 @@ struct OnboardingFlowView: View {
         footer: String?,
         buttonTitle: String,
         buttonIcon: String? = nil,
-        topIcon: String? = nil
+        topIcon: String? = nil,
+        showsFooterContinue: Bool = true,
+        titleFont: Font? = nil,
+        topScrollSpacer: CGFloat? = nil
     ) -> some View {
         OnboardingMessageScreen(
             stepKey: stepKey,
@@ -741,6 +782,9 @@ struct OnboardingFlowView: View {
             buttonTitle: buttonTitle,
             buttonIcon: buttonIcon,
             topIcon: topIcon,
+            showsFooterContinue: showsFooterContinue,
+            titleFont: titleFont,
+            topScrollSpacer: topScrollSpacer,
             palette: appState.palette,
             card: { AnyView(card()) },
             onContinue: advance
@@ -1008,16 +1052,28 @@ private struct OnboardingMessageScreen: View {
     let buttonTitle: String
     let buttonIcon: String?
     let topIcon: String?
+    /// When `false`, the paywall supplies its own **Skip** control inside the card.
+    let showsFooterContinue: Bool
+    /// When set (e.g. paywall), overrides the default large serif title.
+    let titleFont: Font?
+    /// When set, reduces the top inset below the onboarding progress bar.
+    let topScrollSpacer: CGFloat?
     let palette: AppThemePalette
     let card: () -> AnyView
     let onContinue: () -> Void
 
     @State private var revealCount = 0
 
+    private var resolvedTopSpacer: CGFloat { topScrollSpacer ?? 36 }
+
+    private var resolvedTitleFont: Font {
+        titleFont ?? .system(.largeTitle, design: .serif, weight: .semibold)
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 22) {
-                Spacer(minLength: 36)
+                Spacer(minLength: resolvedTopSpacer)
 
                 if let topIcon {
                     OnboardingIconMoment(symbol: topIcon, palette: palette)
@@ -1034,7 +1090,7 @@ private struct OnboardingMessageScreen: View {
 
                     if let title {
                         Text(title)
-                            .font(.system(.largeTitle, design: .serif, weight: .semibold))
+                            .font(resolvedTitleFont)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(palette.primaryText)
                     }
@@ -1063,14 +1119,16 @@ private struct OnboardingMessageScreen: View {
                         .offset(y: revealCount > 2 ? 0 : 16)
                 }
 
-                OnboardingPrimaryButton(
-                    title: buttonTitle,
-                    systemImage: buttonIcon,
-                    palette: palette,
-                    action: onContinue
-                )
-                .opacity(revealCount > 2 ? 1 : 0)
-                .offset(y: revealCount > 2 ? 0 : 20)
+                if showsFooterContinue {
+                    OnboardingPrimaryButton(
+                        title: buttonTitle,
+                        systemImage: buttonIcon,
+                        palette: palette,
+                        action: onContinue
+                    )
+                    .opacity(revealCount > 2 ? 1 : 0)
+                    .offset(y: revealCount > 2 ? 0 : 20)
+                }
 
                 Spacer(minLength: 34)
             }
@@ -1122,7 +1180,10 @@ private struct OnboardingNameScreen: View {
             .offset(y: showContent ? 0 : 20)
 
             VStack(spacing: 16) {
-                TextField("Your name", text: $name)
+                TextField("", text: $name, prompt: Text("Your name").foregroundStyle(palette.secondaryText.opacity(0.85)))
+                    .font(.body)
+                    .foregroundStyle(palette.primaryText)
+                    .tint(palette.accent)
                     .padding(.horizontal, 20)
                     .frame(height: 58)
                     .background(palette.card)
@@ -1406,7 +1467,7 @@ private struct OnboardingAuthScreen: View {
                             .foregroundStyle(palette.secondaryText)
                             .multilineTextAlignment(.center)
                     } else {
-                        Text("Sign in with your username or email and password. If you use a username only, we create a private sign-in email for your account.")
+                        Text("Create an account to save your journey. Pick a username or use your email along with a password.")
                             .font(.subheadline)
                             .foregroundStyle(palette.secondaryText)
                             .multilineTextAlignment(.center)
@@ -1420,17 +1481,18 @@ private struct OnboardingAuthScreen: View {
                     } label: {
                         Text("Continue")
                             .font(.headline)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                             .background(palette.headerAccent)
-                            .foregroundStyle(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .buttonLabelHitRoundRect(cornerRadius: 16)
                     }
                     .buttonStyle(.plain)
                     .opacity(showContent ? 1 : 0)
                     .padding(.top, 8)
                 } else {
-                    EmailPasswordAuthForm(appState: appState, palette: palette, onSuccess: onContinue)
+                    EmailPasswordAuthForm(appState: appState, palette: palette, onSuccess: onContinue, signUpOnly: true)
                         .opacity(showContent ? 1 : 0)
                 }
 
@@ -1612,6 +1674,7 @@ private struct OnboardingOptionButton: View {
                     .stroke(isSelected ? palette.accent.opacity(0.72) : palette.border.opacity(0.74), lineWidth: 1.2)
             )
             .shadow(color: palette.shadow.opacity(isSelected ? 0.38 : 0.18), radius: isSelected ? 16 : 10, x: 0, y: 8)
+            .buttonLabelHitRoundRect(cornerRadius: 18)
         }
         .buttonStyle(.plain)
     }
@@ -1647,6 +1710,7 @@ private struct OnboardingPrimaryButton: View {
                 )
             )
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .buttonLabelHitRoundRect(cornerRadius: 20)
             .shadow(color: palette.shadow.opacity(isDisabled ? 0.12 : 0.34), radius: 18, x: 0, y: 10)
         }
         .disabled(isDisabled)
@@ -1655,7 +1719,7 @@ private struct OnboardingPrimaryButton: View {
 }
 
 #Preview {
-    AppStatePreviewRoot { _ in
+    AppStatePreviewRoot { _, _ in
         OnboardingFlowView()
     }
 }

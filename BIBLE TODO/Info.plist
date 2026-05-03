@@ -8,6 +8,10 @@
 	<string>$(SUPABASE_URL)</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>REVENUECAT_API_KEY_DEBUG</key>
+	<string>$(REVENUECAT_API_KEY_DEBUG)</string>
+	<key>REVENUECAT_API_KEY_PRODUCTION</key>
+	<string>$(REVENUECAT_API_KEY_PRODUCTION)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

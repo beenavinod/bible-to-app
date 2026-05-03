@@ -2,7 +2,7 @@ import Foundation
 
 /// Used before sign-in or when Supabase is unavailable. All data methods fail fast (no fake data).
 final class SignedOutBibleService: BibleService {
-    func fetchTodayVerse() async throws -> Verse {
+    func fetchTodayDailyRecord() async throws -> DailyRecord {
         throw BibleTodoRepositoryError.notAuthenticated
     }
 

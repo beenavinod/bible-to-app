@@ -280,13 +280,9 @@ final class BibleTodoRepository: Sendable {
             .execute()
             .value
 
-        let today = completedDate
-        guard let yesterdayDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else {
-            throw BibleTodoRepositoryError.invalidConfiguration
-        }
-        let yesterday = BibleTodoDate.formatLocalDay(yesterdayDate)
+        let completedDayISO = completedDate
 
-        if streak.lastCompletedDate == today {
+        if streak.lastCompletedDate == completedDayISO {
             return StreakInfo(
                 currentStreak: streak.currentStreak,
                 longestStreak: streak.longestStreak,
@@ -294,8 +290,14 @@ final class BibleTodoRepository: Sendable {
             )
         }
 
+        guard let completedDay = BibleTodoDate.parseLocalDay(completedDayISO),
+              let priorCalendarDay = Calendar.current.date(byAdding: .day, value: -1, to: completedDay) else {
+            throw BibleTodoRepositoryError.invalidConfiguration
+        }
+        let priorDayISO = BibleTodoDate.formatLocalDay(priorCalendarDay)
+
         let newCurrent: Int
-        if streak.lastCompletedDate == yesterday {
+        if streak.lastCompletedDate == priorDayISO {
             newCurrent = streak.currentStreak + 1
         } else {
             newCurrent = 1
@@ -306,7 +308,7 @@ final class BibleTodoRepository: Sendable {
         let streakPatch: JSONObject = [
             "current_streak": .integer(newCurrent),
             "longest_streak": .integer(newLongest),
-            "last_completed_date": .string(today)
+            "last_completed_date": .string(completedDayISO)
         ]
         try await client
             .from("user_streaks")
@@ -431,6 +433,18 @@ final class BibleTodoRepository: Sendable {
             .value
     }
 
+    func fetchBadgeDefinition(id: Int) async throws -> BadgeDefinitionRow? {
+        let rows: [BadgeDefinitionRow] = try await client
+            .from("badge_definitions")
+            .select()
+            .eq("id", value: id)
+            .eq("is_active", value: true)
+            .limit(1)
+            .execute()
+            .value
+        return rows.first
+    }
+
     func fetchUserEarnedBadgeIds(userId: UUID) async throws -> Set<Int> {
         let rows: [UserBadgeRow] = try await client
             .from("user_badges")
@@ -498,10 +512,33 @@ final class BibleTodoRepository: Sendable {
             .execute()
         let total = countResponse.count ?? 0
 
+        let reconciledStreak = Self.reconcileCurrentStreak(
+            stored: row.currentStreak,
+            lastCompletedDate: row.lastCompletedDate
+        )
+
         return StreakSummary(
-            currentStreak: row.currentStreak,
+            currentStreak: reconciledStreak,
             longestStreak: row.longestStreak,
             totalCompletedDays: total
         )
+    }
+
+    /// If the stored streak's `lastCompletedDate` is older than yesterday, the
+    /// streak has been broken — return 0 regardless of the stored value.
+    private static func reconcileCurrentStreak(stored: Int, lastCompletedDate: String?) -> Int {
+        guard let lastDateString = lastCompletedDate,
+              let lastDate = BibleTodoDate.parseLocalDay(lastDateString) else {
+            return 0
+        }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return 0 }
+        let lastDay = calendar.startOfDay(for: lastDate)
+
+        if lastDay >= yesterday {
+            return stored
+        }
+        return 0
     }
 }

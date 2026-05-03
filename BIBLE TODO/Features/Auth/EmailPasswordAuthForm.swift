@@ -1,3 +1,4 @@
+import Auth
 import SwiftUI
 
 /// Shared sign-in / sign-up fields (username or email + password), matching Supabase `AppState` auth.
@@ -12,6 +13,10 @@ struct EmailPasswordAuthForm: View {
     let palette: AppThemePalette
     /// Invoked after a successful `signIn` or `signUp` (e.g. advance onboarding).
     let onSuccess: (() -> Void)?
+    /// When `true`, hides the mode toggle and locks to `.signUp` (used during onboarding).
+    var signUpOnly: Bool = false
+    /// When `true`, hides the mode toggle and locks to `.signIn` (used on the welcome/sign-in page).
+    var signInOnly: Bool = false
 
     @State private var mode: EmailPasswordAuthMode = .signIn
     @State private var username = ""
@@ -22,38 +27,43 @@ struct EmailPasswordAuthForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Avoid `.segmented` Picker: it can fault on macOS when this view is removed right after sign-in.
-            HStack(spacing: 4) {
-                ForEach(EmailPasswordAuthMode.allCases, id: \.self) { m in
-                    Button {
-                        mode = m
-                    } label: {
-                        Text(m.rawValue)
-                            .font(.subheadline.weight(mode == m ? .semibold : .regular))
-                            .foregroundStyle(mode == m ? palette.primaryText : palette.secondaryText)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(mode == m ? palette.card : Color.clear)
-                            }
+            if !signUpOnly && !signInOnly {
+                // Avoid `.segmented` Picker: it can fault on macOS when this view is removed right after sign-in.
+                HStack(spacing: 4) {
+                    ForEach(EmailPasswordAuthMode.allCases, id: \.self) { m in
+                        Button {
+                            mode = m
+                        } label: {
+                            Text(m.rawValue)
+                                .font(.subheadline.weight(mode == m ? .semibold : .regular))
+                                .foregroundStyle(mode == m ? palette.primaryText : palette.secondaryText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(mode == m ? palette.card : Color.clear)
+                                }
+                                .buttonLabelHitRoundRect(cornerRadius: 10)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(4)
+                .background(palette.secondaryText.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
-            .padding(4)
-            .background(palette.secondaryText.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Username or email")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
-                TextField("e.g. james or you@email.com", text: $username)
+                TextField("", text: $username)
                     .textContentType(.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .font(.body)
                     .foregroundStyle(palette.primaryText)
+                    .tint(palette.accent)
                     .padding(14)
                     .background(palette.card)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -63,9 +73,11 @@ struct EmailPasswordAuthForm: View {
                 Text("Password")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.secondaryText)
-                SecureField("Password", text: $password)
+                SecureField("", text: $password)
                     .textContentType(mode == .signUp ? .newPassword : .password)
+                    .font(.body)
                     .foregroundStyle(palette.primaryText)
+                    .tint(palette.accent)
                     .padding(14)
                     .background(palette.card)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -76,9 +88,11 @@ struct EmailPasswordAuthForm: View {
                     Text("Confirm password")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(palette.secondaryText)
-                    SecureField("Confirm", text: $confirmPassword)
+                    SecureField("", text: $confirmPassword)
                         .textContentType(.newPassword)
+                        .font(.body)
                         .foregroundStyle(palette.primaryText)
+                        .tint(palette.accent)
                         .padding(14)
                         .background(palette.card)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -99,13 +113,19 @@ struct EmailPasswordAuthForm: View {
                     Text(mode == .signIn ? "Sign In" : "Create account")
                         .font(.headline)
                 }
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(palette.headerAccent)
-                .foregroundStyle(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .buttonLabelHitRoundRect(cornerRadius: 16)
             }
+            .buttonStyle(.plain)
             .disabled(isBusy || username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
+        }
+        .onAppear {
+            if signUpOnly { mode = .signUp }
+            if signInOnly { mode = .signIn }
         }
     }
 
@@ -126,8 +146,18 @@ struct EmailPasswordAuthForm: View {
             }
             await Task.yield()
             onSuccess?()
+        } catch let authError as AuthError {
+            if signUpOnly, isUserAlreadyExistsError(authError) {
+                appState.redirectToSignIn()
+            } else {
+                errorMessage = authError.localizedDescription
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func isUserAlreadyExistsError(_ error: AuthError) -> Bool {
+        error.errorCode == .userAlreadyExists
     }
 }

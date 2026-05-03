@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import RevenueCat
 import SwiftUI
 import Supabase
 import WidgetKit
@@ -39,6 +40,9 @@ final class AppState: ObservableObject {
     private(set) var repository: BibleTodoRepository?
 
     private(set) var sessionUserId: UUID?
+
+    /// Set from `SubscriptionManager.configure` so home can mirror premium into widget payloads without racing `WidgetDataStore.writePremiumUnlocked`.
+    weak var subscriptionManagerForWidgets: SubscriptionManager?
 
     private let persistence: AppPersistence
 
@@ -86,7 +90,13 @@ final class AppState: ObservableObject {
         hasCompletedOnboarding = true
         preferredName = persistence.preferredName()
         rootPhase = .main
-        mainTabViewModels = TabViewModelsContainer(service: service, persistence: persistence)
+        mainTabViewModels = TabViewModelsContainer(
+            service: service,
+            persistence: persistence,
+            isPremiumUnlockedForWidgets: { [weak self] in
+                self?.subscriptionManagerForWidgets?.isPremium ?? WidgetDataStore.readPremiumUnlocked()
+            }
+        )
     }
 
     var palette: AppThemePalette {
@@ -104,7 +114,11 @@ final class AppState: ObservableObject {
             let (dest, userId, profile) = try await repository.resolveAppLaunchState()
             switch dest {
             case .welcome:
-                rootPhase = .needsAuth
+                if persistence.hasCompletedOnboarding() {
+                    rootPhase = .needsAuth
+                } else {
+                    rootPhase = .onboarding
+                }
             case .onboarding:
                 guard let userId else {
                     rootPhase = .needsAuth
@@ -119,15 +133,34 @@ final class AppState: ObservableObject {
                 }
                 await applySignedInUser(userId: userId, existingProfile: profile)
                 rebuildMainTabViewModels()
+                await preloadMainHomeContent()
                 rootPhase = .main
             }
         } catch {
-            rootPhase = .needsAuth
+            if persistence.hasCompletedOnboarding() {
+                rootPhase = .needsAuth
+            } else {
+                rootPhase = .onboarding
+            }
+        }
+    }
+
+    private func syncRevenueCatAppUserID(_ userId: UUID) async {
+        RevenueCatConfig.configurePurchasesIfNeeded()
+        guard RevenueCatConfig.isConfigured else { return }
+        do {
+            _ = try await Purchases.shared.logIn(userId.uuidString)
+            NotificationCenter.default.post(name: .bibleTodoRevenueCatIdentityChanged, object: nil)
+        } catch {
+            #if DEBUG
+            print("AppState: RevenueCat logIn error \(error)")
+            #endif
         }
     }
 
     private func applySignedInUser(userId: UUID, existingProfile: ProfileRow? = nil) async {
         sessionUserId = userId
+        await syncRevenueCatAppUserID(userId)
         guard let repository else { return }
         do {
             let profile: ProfileRow
@@ -150,7 +183,19 @@ final class AppState: ObservableObject {
     }
 
     private func rebuildMainTabViewModels() {
-        mainTabViewModels = TabViewModelsContainer(service: service, persistence: persistence)
+        mainTabViewModels = TabViewModelsContainer(
+            service: service,
+            persistence: persistence,
+            isPremiumUnlockedForWidgets: { [weak self] in
+                self?.subscriptionManagerForWidgets?.isPremium ?? WidgetDataStore.readPremiumUnlocked()
+            }
+        )
+    }
+
+    /// Warms today’s verse (and history) before showing the main shell so the first frame is not empty.
+    private func preloadMainHomeContent() async {
+        guard let tabs = mainTabViewModels else { return }
+        await tabs.home.load()
     }
 
     private func useSupabaseService() {
@@ -195,15 +240,29 @@ final class AppState: ObservableObject {
             hasCompletedOnboarding = true
             persistence.setHasCompletedOnboarding(true)
             rebuildMainTabViewModels()
+            await preloadMainHomeContent()
             rootPhase = .main
         } else {
             hasCompletedOnboarding = false
             persistence.setHasCompletedOnboarding(false)
-            rootPhase = .onboarding
+            if rootPhase != .onboarding {
+                rootPhase = .onboarding
+            }
         }
     }
 
     func signOut() async {
+        RevenueCatConfig.configurePurchasesIfNeeded()
+        if RevenueCatConfig.isConfigured {
+            do {
+                _ = try await Purchases.shared.logOut()
+                NotificationCenter.default.post(name: .bibleTodoRevenueCatIdentityChanged, object: nil)
+            } catch {
+                #if DEBUG
+                print("AppState: RevenueCat logOut error \(error)")
+                #endif
+            }
+        }
         if let client = supabaseClient {
             try? await client.auth.signOut()
         }
@@ -214,9 +273,24 @@ final class AppState: ObservableObject {
         mainTabViewModels = nil
         service = SignedOutBibleService()
         authSessionRevision += 1
+        persistence.setLockScreenWidgetBadgeId(nil)
         hasCompletedOnboarding = persistence.hasCompletedOnboarding()
         rootPhase = supabaseClient != nil ? .needsAuth : .configurationRequired
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Switches from onboarding to the sign-in page when an existing account is detected during signup.
+    func redirectToSignIn() {
+        persistence.setHasCompletedOnboarding(true)
+        hasCompletedOnboarding = true
+        rootPhase = .needsAuth
+    }
+
+    /// Switches from the sign-in page to the onboarding flow for new account creation.
+    func redirectToOnboarding() {
+        persistence.setHasCompletedOnboarding(false)
+        hasCompletedOnboarding = false
+        rootPhase = .onboarding
     }
 
     // MARK: - Settings / theme
@@ -236,6 +310,23 @@ final class AppState: ObservableObject {
         persistence.setSelectedHomeWallpaper(wallpaper)
     }
 
+    /// When a subscription lapses, snap wallpaper / app background back to free-tier options.
+    func applyFreeTierRestrictionsIfNeeded() {
+        if homeWallpaper.isPremiumOnly {
+            setHomeWallpaper(.w1)
+        }
+        if background.isPremiumOnly {
+            setBackground(.plain)
+        }
+        if theme.isPremiumOnly {
+            setTheme(.oliveMist)
+        }
+    }
+
+    func resyncHomeWidgetVerseIfPossible() {
+        mainTabViewModels?.home.resyncVerseWidgetForCurrentVerse()
+    }
+
     func setWidgetsEnabled(_ isEnabled: Bool) {
         widgetsEnabled = isEnabled
         persistence.setWidgetsEnabled(isEnabled)
@@ -248,6 +339,11 @@ final class AppState: ObservableObject {
         hasCompletedOnboarding = true
         persistence.setPreferredName(preferredName)
         persistence.setHasCompletedOnboarding(true)
+
+        guard sessionUserId != nil else {
+            rootPhase = .needsAuth
+            return
+        }
 
         if let userId = sessionUserId, let repository {
             let display = preferredName ?? "Friend"
@@ -263,6 +359,7 @@ final class AppState: ObservableObject {
         }
 
         rebuildMainTabViewModels()
+        await preloadMainHomeContent()
         if rootPhase == .onboarding {
             rootPhase = .main
         }

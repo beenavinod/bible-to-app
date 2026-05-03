@@ -14,6 +14,8 @@ struct SharedVerseTaskData: Codable {
     let symbolName: String
     /// ISO 8601 date string (yyyy-MM-dd) for staleness checks.
     let dateISO: String
+    /// Whether today’s task is done (medium widget status). Omitted in older payloads → treated as false.
+    var taskCompleted: Bool? = nil
 }
 
 /// Week-day completion status for the streak widget.
@@ -28,6 +30,7 @@ struct SharedStreakData: Codable {
     let longestStreak: Int
     let totalCompletedDays: Int
     let weekDays: [SharedWeekDay]
+    var calendarWeek: [SharedWeekDay]? = nil
 }
 
 /// A single unlocked achievement icon for the lock-screen widget.
@@ -53,6 +56,7 @@ enum WidgetDataStore {
         static let verseTask = "widget_verseTask"
         static let streak = "widget_streak"
         static let badges = "widget_badges"
+        static let premiumUnlocked = "widget_premiumUnlocked"
     }
 
     // MARK: - Verse + Task
@@ -89,6 +93,14 @@ enum WidgetDataStore {
     /// Reads unlocked badge data (returns `nil` when no data has been written).
     static func readBadges() -> SharedBadgeData? {
         read(SharedBadgeData.self, forKey: Key.badges)
+    }
+
+    static func writePremiumUnlocked(_ isUnlocked: Bool) {
+        defaults?.set(isUnlocked, forKey: Key.premiumUnlocked)
+    }
+
+    static func readPremiumUnlocked() -> Bool {
+        defaults?.bool(forKey: Key.premiumUnlocked) ?? false
     }
 
     // MARK: - Helpers

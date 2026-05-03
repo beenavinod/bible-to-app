@@ -6,8 +6,19 @@ final class TabViewModelsContainer {
     let home: HomeViewModel
     let journey: JourneyViewModel
 
-    init(service: BibleService, persistence: AppPersistence) {
-        home = HomeViewModel(service: service, persistence: persistence)
-        journey = JourneyViewModel(service: service, persistence: persistence)
+    init(
+        service: BibleService,
+        persistence: AppPersistence,
+        isPremiumUnlockedForWidgets: @escaping @MainActor () -> Bool = { WidgetDataStore.readPremiumUnlocked() }
+    ) {
+        let journeyVM = JourneyViewModel(service: service, persistence: persistence)
+        journey = journeyVM
+        home = HomeViewModel(
+            service: service,
+            persistence: persistence,
+            isPremiumUnlockedForWidgets: isPremiumUnlockedForWidgets
+        ) {
+            await journeyVM.load()
+        }
     }
 }

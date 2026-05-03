@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		327E8F982FA7169700023C85 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 327E8F972FA7169700023C85 /* RevenueCat */; };
 		39EA622E2F8A1AC600F37C9D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39EA622D2F8A1AC600F37C9D /* WidgetKit.framework */; };
 		39EA62302F8A1AC600F37C9D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39EA622F2F8A1AC600F37C9D /* SwiftUI.framework */; };
 		39EA62412F8A1AC700F37C9D /* StreakWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 39EA622B2F8A1AC600F37C9D /* StreakWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -141,6 +142,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				327E8F982FA7169700023C85 /* RevenueCat in Frameworks */,
 				39EA62852F90000300F37C9D /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -242,6 +244,7 @@
 			name = "BIBLE TODO";
 			packageProductDependencies = (
 				39EA62842F90000200F37C9D /* Supabase */,
+				327E8F972FA7169700023C85 /* RevenueCat */,
 			);
 			productName = "BIBLE TODO";
 			productReference = 39EA61E42F80CFE600F37C9D /* BIBLE TODO.app */;
@@ -348,6 +351,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				39EA62832F90000100F37C9D /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				327E8F962FA7169700023C85 /* XCRemoteSwiftPackageReference "purchases-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 39EA61E52F80CFE600F37C9D /* Products */;
@@ -893,6 +897,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		327E8F962FA7169700023C85 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.70.0;
+			};
+		};
 		39EA62832F90000100F37C9D /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -904,6 +916,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		327E8F972FA7169700023C85 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 327E8F962FA7169700023C85 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
 		39EA62842F90000200F37C9D /* Supabase */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 39EA62832F90000100F37C9D /* XCRemoteSwiftPackageReference "supabase-swift" */;

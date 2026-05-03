@@ -25,16 +25,48 @@ struct Provider: TimelineProvider {
         guard let data = WidgetDataStore.readStreak() else {
             return .placeholder
         }
-        let week = data.weekDays.map { day in
-            WeekdayStatus(symbol: day.symbol, isCompleted: day.isCompleted)
-        }
+        let week = normalizeWeekDays(data.weekDays)
+        let calendarWeek = normalizeCalendarWeek(data.calendarWeek, fallbackFive: data.weekDays)
         return StreakEntry(
             date: .now,
             currentStreak: data.currentStreak,
             longestStreak: data.longestStreak,
             totalCompletedDays: data.totalCompletedDays,
-            week: week
+            week: week,
+            calendarWeek: calendarWeek
         )
+    }
+
+    /// App sends exactly five rolling days; pad or trim defensively for older payloads.
+    private func normalizeWeekDays(_ days: [SharedWeekDay]) -> [WeekdayStatus] {
+        var mapped = days.map { WeekdayStatus(symbol: $0.symbol, isCompleted: $0.isCompleted) }
+        if mapped.count > 5 {
+            mapped = Array(mapped.prefix(5))
+        }
+        while mapped.count < 5 {
+            mapped.append(WeekdayStatus(symbol: "·", isCompleted: false))
+        }
+        return mapped
+    }
+
+    /// Seven-day strip for the large widget (matches share card). Falls back if app hasn’t written `calendarWeek` yet.
+    private func normalizeCalendarWeek(_ days: [SharedWeekDay]?, fallbackFive: [SharedWeekDay]) -> [WeekdayStatus] {
+        if let days, days.count >= 7 {
+            return Array(days.prefix(7)).map { WeekdayStatus(symbol: $0.symbol, isCompleted: $0.isCompleted) }
+        }
+        if let days, !days.isEmpty {
+            var mapped = days.map { WeekdayStatus(symbol: $0.symbol, isCompleted: $0.isCompleted) }
+            while mapped.count < 7 {
+                mapped.append(WeekdayStatus(symbol: "·", isCompleted: false))
+            }
+            return Array(mapped.prefix(7))
+        }
+        let fb = normalizeWeekDays(fallbackFive)
+        var out: [WeekdayStatus] = fb
+        while out.count < 7 {
+            out.append(WeekdayStatus(symbol: "·", isCompleted: false))
+        }
+        return Array(out.prefix(7))
     }
 }
 
@@ -43,16 +75,26 @@ struct StreakEntry: TimelineEntry {
     let currentStreak: Int
     let longestStreak: Int
     let totalCompletedDays: Int
+    /// Five rolling days (medium widget).
     let week: [WeekdayStatus]
+    /// Seven weekday strip (large widget).
+    let calendarWeek: [WeekdayStatus]
 
     static let placeholder = StreakEntry(
         date: .now,
-        currentStreak: 0,
-        longestStreak: 0,
-        totalCompletedDays: 0,
+        currentStreak: 3,
+        longestStreak: 8,
+        totalCompletedDays: 12,
         week: [
-            WeekdayStatus(symbol: "S", isCompleted: false),
-            WeekdayStatus(symbol: "M", isCompleted: false),
+            WeekdayStatus(symbol: "13", isCompleted: true),
+            WeekdayStatus(symbol: "14", isCompleted: true),
+            WeekdayStatus(symbol: "15", isCompleted: false),
+            WeekdayStatus(symbol: "16", isCompleted: false),
+            WeekdayStatus(symbol: "17", isCompleted: false)
+        ],
+        calendarWeek: [
+            WeekdayStatus(symbol: "S", isCompleted: true),
+            WeekdayStatus(symbol: "M", isCompleted: true),
             WeekdayStatus(symbol: "T", isCompleted: false),
             WeekdayStatus(symbol: "W", isCompleted: false),
             WeekdayStatus(symbol: "T", isCompleted: false),
@@ -62,8 +104,7 @@ struct StreakEntry: TimelineEntry {
     )
 }
 
-struct WeekdayStatus: Identifiable {
-    let id = UUID()
+struct WeekdayStatus: Equatable {
     let symbol: String
     let isCompleted: Bool
 }
@@ -76,11 +117,11 @@ struct StreakWidgetEntryView: View {
         content
             .padding(padding)
             .containerBackground(for: .widget) {
-                LinearGradient(
-                    colors: [WidgetPalette.canvasTop, WidgetPalette.canvasBottom],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                if family == .systemLarge {
+                    WidgetPalette.canvasBackground
+                } else {
+                    mediumWidgetBackground
+                }
             }
     }
 
@@ -88,7 +129,7 @@ struct StreakWidgetEntryView: View {
     private var content: some View {
         switch family {
         case .systemLarge:
-            largeWidget
+            largeShareStyleWidget
         default:
             mediumWidget
         }
@@ -96,145 +137,264 @@ struct StreakWidgetEntryView: View {
 
     private var padding: CGFloat {
         switch family {
-        case .systemLarge:
-            22
-        default:
-            18
+        case .systemLarge: 10
+        default: 14
         }
     }
 
+    /// Fills the medium widget; image art keeps Jesus on the trailing side — align fill to `.trailing` so crop favors the left safe area.
+    private var mediumWidgetBackground: some View {
+        GeometryReader { geo in
+            Image("StreakMediumBackground")
+                .resizable()
+                .scaledToFill()
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .trailing)
+                .clipped()
+        }
+    }
+
+    /// Streak UI sits in the left ~62% so it stays over the empty cream area, not the figure.
     private var mediumWidget: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                compactHeader(titleFont: 11, valueFont: 28, iconSize: 44)
+        GeometryReader { geo in
+            let contentMaxWidth = geo.size.width * 0.62
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
+                    streakHeaderMedium
+                        .padding(.bottom, 10)
 
-                Spacer()
+                    streakDivider
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 12)
 
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Longest")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(WidgetPalette.secondaryText)
-                    Text("\(entry.longestStreak)")
-                        .font(.system(size: 24, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WidgetPalette.primaryText)
+                    weekDotsRow(days: entry.week, circleSize: 28, textSize: 11, spacing: 5, shareStyleIncomplete: false)
                 }
+                .frame(maxWidth: contentMaxWidth, alignment: .leading)
+
+                Spacer(minLength: 0)
             }
-
-            Divider()
-                .overlay(WidgetPalette.border.opacity(0.75))
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("THIS WEEK")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(WidgetPalette.primaryText)
-
-                HStack(spacing: 8) {
-                    ForEach(entry.week) { day in
-                        weekdayDot(day, circleSize: 30, textSize: 11)
-                    }
-                }
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
     }
 
-    private var largeWidget: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top) {
-                compactHeader(titleFont: 13, valueFont: 40, iconSize: 52)
+    private var largeShareStyleWidget: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let heroD = min(w * 0.46, h * 0.30)
+            let heroNum = heroD * 0.36
+            let captionSize = max(9, heroD * 0.082)
+            let headline = max(13, w * 0.038)
+            let brandLine = max(11, w * 0.03)
+            let statValue = max(20, w * 0.072)
+            let statLabel = max(10, w * 0.03)
+            let weekDot = max(22, min(w * 0.11, 34))
+            let weekLbl = max(9, w * 0.028)
+            let cardCorner: CGFloat = 14
 
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Longest")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(WidgetPalette.secondaryText)
-                    Text("\(entry.longestStreak)")
-                        .font(.system(size: 30, weight: .semibold, design: .rounded))
-                        .foregroundStyle(WidgetPalette.primaryText)
-                }
-            }
-
-            VStack(spacing: 4) {
-                Text("Total Days Completed")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(WidgetPalette.secondaryText)
-                Text("\(entry.totalCompletedDays)")
-                    .font(.system(size: 32, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WidgetPalette.primaryText)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(.white.opacity(0.28))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(WidgetPalette.border.opacity(0.7), lineWidth: 1)
-            )
-
-            Divider()
-                .overlay(WidgetPalette.border.opacity(0.75))
-
-            VStack(alignment: .leading, spacing: 14) {
-                Text("THIS WEEK")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(WidgetPalette.primaryText)
-
-                HStack(spacing: 10) {
-                    ForEach(entry.week) { day in
-                        weekdayDot(day, circleSize: 38, textSize: 12)
+            VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    VStack(spacing: 5) {
+                        HStack(spacing: 7) {
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: headline * 0.72, weight: .semibold))
+                                .foregroundStyle(WidgetPalette.accent)
+                            Text("Streak unlocked")
+                                .font(.system(size: headline, weight: .bold, design: .rounded))
+                                .foregroundStyle(WidgetPalette.primaryText)
+                                .minimumScaleFactor(0.75)
+                                .lineLimit(1)
+                        }
+                        Text("Bible Life")
+                            .font(.system(size: brandLine, weight: .semibold, design: .serif))
+                            .foregroundStyle(WidgetPalette.secondaryText)
                     }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 2)
+                    .padding(.bottom, 8)
+
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [WidgetPalette.accent, WidgetPalette.headerAccent.opacity(0.92)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: heroD, height: heroD)
+                            .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+
+                        VStack(spacing: heroD * 0.04) {
+                            Text("\(entry.currentStreak)")
+                                .font(.system(size: heroNum, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .minimumScaleFactor(0.35)
+                                .lineLimit(1)
+                            Text(entry.currentStreak == 1 ? "DAY STREAK" : "DAYS STREAK")
+                                .font(.system(size: captionSize, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.95))
+                                .tracking(1.5)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+
+                    HStack(alignment: .top, spacing: 9) {
+                        largeStatCard(title: "Longest", value: "\(entry.longestStreak)", statLabel: statLabel, statValue: statValue, corner: cardCorner)
+                        largeStatCard(title: "Total days", value: "\(entry.totalCompletedDays)", statLabel: statLabel, statValue: statValue, corner: cardCorner)
+                    }
+                    .padding(.top, 8)
+
+                    VStack(spacing: 7) {
+                        Text("THIS WEEK")
+                            .font(.system(size: max(10, w * 0.03), weight: .bold, design: .rounded))
+                            .foregroundStyle(WidgetPalette.primaryText)
+                            .tracking(0.8)
+
+                        weekDotsRow(days: entry.calendarWeek, circleSize: weekDot, textSize: weekLbl, spacing: 0, shareStyleIncomplete: true)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 10)
+
+                    Text("Consistency is worship")
+                        .font(.system(size: max(9, w * 0.027), weight: .semibold, design: .serif))
+                        .foregroundStyle(WidgetPalette.primaryText.opacity(0.88))
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+
+                    Text("Bible Life · Live the Word")
+                        .font(.system(size: max(8, w * 0.024), weight: .medium, design: .rounded))
+                        .foregroundStyle(WidgetPalette.secondaryText.opacity(0.95))
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 6)
+                    Spacer(minLength: 0)
                 }
-            }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
-    private func compactHeader(titleFont: CGFloat, valueFont: CGFloat, iconSize: CGFloat) -> some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(WidgetPalette.headerAccent.opacity(0.9))
-                .frame(width: iconSize, height: iconSize)
-                .overlay {
-                    Image(systemName: "flame")
-                        .font(.system(size: iconSize * 0.42, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
+    private func largeStatCard(title: String, value: String, statLabel: CGFloat, statValue: CGFloat, corner: CGFloat) -> some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.system(size: statLabel, weight: .medium, design: .rounded))
+                .foregroundStyle(WidgetPalette.secondaryText)
+            Text(value)
+                .font(.system(size: statValue, weight: .bold, design: .rounded))
+                .foregroundStyle(WidgetPalette.primaryText)
+                .minimumScaleFactor(0.45)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 11)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .fill(WidgetPalette.cardFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .stroke(WidgetPalette.border.opacity(0.55), lineWidth: 1)
+        )
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Current Streak")
-                    .font(.system(size: titleFont, weight: .medium))
-                    .foregroundStyle(WidgetPalette.secondaryText)
+    private var streakHeaderMedium: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            flameBadge(size: 40, flameSize: 17)
+
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text("\(entry.currentStreak)")
-                    .font(.system(size: valueFont, weight: .semibold, design: .rounded))
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .foregroundStyle(WidgetPalette.primaryText)
+                Text("days")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(WidgetPalette.secondaryText)
             }
         }
     }
 
-    private func weekdayDot(_ day: WeekdayStatus, circleSize: CGFloat, textSize: CGFloat) -> some View {
-        VStack(spacing: 6) {
-            Circle()
-                .fill(day.isCompleted ? WidgetPalette.accent : WidgetPalette.pendingFill)
-                .frame(width: circleSize, height: circleSize)
-                .overlay {
+    private func flameBadge(size: CGFloat, flameSize: CGFloat) -> some View {
+        Circle()
+            .fill(WidgetPalette.headerAccent.opacity(0.92))
+            .frame(width: size, height: size)
+            .overlay {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: flameSize, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+    }
+
+    private var streakDivider: some View {
+        GeometryReader { geo in
+            Rectangle()
+                .fill(WidgetPalette.border.opacity(0.55))
+                .frame(width: min(geo.size.width * 0.92, 200), height: 1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(height: 1)
+    }
+
+    private func weekDotsRow(
+        days: [WeekdayStatus],
+        circleSize: CGFloat,
+        textSize: CGFloat,
+        spacing: CGFloat,
+        shareStyleIncomplete: Bool
+    ) -> some View {
+        HStack(spacing: spacing) {
+            ForEach(Array(days.enumerated()), id: \.offset) { _, day in
+                weekdayDot(day, circleSize: circleSize, textSize: textSize, shareStyleIncomplete: shareStyleIncomplete)
+            }
+        }
+    }
+
+    private func weekdayDot(
+        _ day: WeekdayStatus,
+        circleSize: CGFloat,
+        textSize: CGFloat,
+        shareStyleIncomplete: Bool
+    ) -> some View {
+        let strokeW: CGFloat = day.isCompleted ? 0 : max(1.5, circleSize * 0.07)
+        return VStack(spacing: shareStyleIncomplete ? 4 : 5) {
+            ZStack {
+                if day.isCompleted {
                     Circle()
-                        .stroke(
-                            day.isCompleted ? WidgetPalette.accent.opacity(0.35) : WidgetPalette.pendingStroke,
-                            lineWidth: 1
-                        )
+                        .fill(WidgetPalette.accent)
+                        .frame(width: circleSize, height: circleSize)
+                        .overlay {
+                            Circle()
+                                .stroke(WidgetPalette.accent.opacity(0.35), lineWidth: 1)
+                        }
+                        .overlay {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: circleSize * 0.4, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                } else if shareStyleIncomplete {
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: circleSize, height: circleSize)
+                        .overlay {
+                            Circle()
+                                .stroke(WidgetPalette.accent.opacity(0.85), lineWidth: strokeW)
+                        }
+                } else {
+                    Circle()
+                        .fill(WidgetPalette.pendingFill)
+                        .frame(width: circleSize, height: circleSize)
+                        .overlay {
+                            Circle()
+                                .stroke(WidgetPalette.pendingStroke, lineWidth: 1)
+                        }
                 }
-                .overlay {
-                    if day.isCompleted {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: circleSize * 0.42, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                }
+            }
 
             Text(day.symbol)
-                .font(.system(size: textSize, weight: .semibold))
-                .foregroundStyle(WidgetPalette.secondaryText)
+                .font(.system(size: textSize, weight: shareStyleIncomplete ? .bold : .semibold, design: .rounded))
+                .foregroundStyle(shareStyleIncomplete ? WidgetPalette.primaryText : WidgetPalette.secondaryText)
+                .minimumScaleFactor(0.55)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
     }
@@ -248,14 +408,20 @@ struct StreakWidget: Widget {
             StreakWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Bible Streak")
-        .description("Shows your streak, total completed days, and this week's progress.")
+        .description("Medium: streak on a gentle background art. Large: full streak story with week and stats.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }
 
 private enum WidgetPalette {
-    static let canvasTop = Color(red: 0.95, green: 0.96, blue: 0.92)
-    static let canvasBottom = Color(red: 0.93, green: 0.95, blue: 0.91)
+    static let canvasTop = Color(red: 0.98, green: 0.97, blue: 0.94)
+    static let canvasBottom = Color(red: 0.94, green: 0.96, blue: 0.91)
+    static let canvasBackground = LinearGradient(
+        colors: [canvasTop, canvasBottom],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    static let cardFill = Color(red: 0.99, green: 0.98, blue: 0.96)
     static let headerAccent = Color(red: 0.68, green: 0.73, blue: 0.62)
     static let accent = Color(red: 0.70, green: 0.77, blue: 0.63)
     static let pendingFill = Color(red: 0.95, green: 0.93, blue: 0.89)

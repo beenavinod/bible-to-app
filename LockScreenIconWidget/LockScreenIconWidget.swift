@@ -24,33 +24,30 @@ struct Provider: TimelineProvider {
     }
 
     private func buildEntries() -> [LockScreenIconEntry] {
-        guard let data = WidgetDataStore.readBadges(), !data.badges.isEmpty else {
+        guard let data = WidgetDataStore.readBadges(), let badge = data.badges.first else {
             return []
         }
         let now = Date()
-        return data.badges.enumerated().map { index, badge in
+        return [
             LockScreenIconEntry(
-                date: Calendar.current.date(byAdding: .hour, value: index, to: now) ?? now,
+                date: now,
                 icon: LockScreenMilestoneIcon(
                     title: badge.title,
                     symbolName: badge.symbolName,
                     milestone: badge.milestone
-                ),
-                unlockedCount: data.badges.count
+                )
             )
-        }
+        ]
     }
 }
 
 struct LockScreenIconEntry: TimelineEntry {
     let date: Date
     let icon: LockScreenMilestoneIcon
-    let unlockedCount: Int
 
     static let placeholder = LockScreenIconEntry(
         date: .now,
-        icon: LockScreenMilestoneIcon(title: "Bible Life", symbolName: "book.closed.fill", milestone: "Start"),
-        unlockedCount: 0
+        icon: LockScreenMilestoneIcon(title: "Bible Life", symbolName: "book.closed.fill", milestone: "Start")
     )
 }
 
@@ -86,20 +83,9 @@ struct LockScreenIconWidgetEntryView: View {
             AccessoryWidgetBackground()
 
             VStack(spacing: 2) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: entry.icon.symbolName)
-                        .font(.system(size: 22, weight: .semibold))
-                        .widgetAccentable()
-
-                    if entry.unlockedCount > 1 {
-                        Text("\(entry.unlockedCount)")
-                            .font(.system(size: 8, weight: .bold, design: .rounded))
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(Capsule().fill(Color.white.opacity(0.22)))
-                            .offset(x: 10, y: -6)
-                    }
-                }
+                Image(systemName: entry.icon.symbolName)
+                    .font(.system(size: 22, weight: .semibold))
+                    .widgetAccentable()
 
                 Text(entry.icon.title)
                     .font(.system(size: 8, weight: .medium))
@@ -124,8 +110,8 @@ struct LockScreenIconWidget: Widget {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             LockScreenIconWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("Unlocked Icon")
-        .description("Shows a currently unlocked streak milestone icon on the Lock Screen.")
+        .configurationDisplayName("Badge icon")
+        .description("Shows the achievement you chose in Journey (one badge) on the Lock Screen.")
         .supportedFamilies([.accessoryCircular])
     }
 }

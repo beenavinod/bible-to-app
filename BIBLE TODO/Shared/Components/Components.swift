@@ -24,10 +24,147 @@ struct HomeWallpaperBackgroundView: View {
     let wallpaper: HomeWallpaper
 
     var body: some View {
-        Image(wallpaper.assetName)
-            .resizable()
-            .scaledToFill()
-            .ignoresSafeArea()
+        GeometryReader { geo in
+            Group {
+                if let assetName = wallpaper.imageAssetName {
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .overlay(Color.black.opacity(0.18))
+                } else if let gradient = wallpaper.homeLinearGradient {
+                    gradient
+                } else {
+                    wallpaper.solidBackgroundColor
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
+        }
+        .ignoresSafeArea()
+    }
+}
+
+/// Circular press-and-hold control for the Home task card.
+/// Uses a frosted glass disc with a progress ring, matching the liquid glass card style.
+struct HomePressHoldCircleView: View {
+    let progress: Double
+    let isCompleted: Bool
+    let isInteractive: Bool
+    let primaryText: Color
+    let secondaryText: Color
+    let accent: Color
+    let accentSoft: Color
+
+    let onPress: () -> Void
+    let onRelease: () -> Void
+
+    private let diameter: CGFloat = 100
+    private let ringWidth: CGFloat = 3.5
+
+    private var inProgress: Bool {
+        isInteractive && !isCompleted && progress > 0 && progress < 1
+    }
+
+    var body: some View {
+        let gesture = DragGesture(minimumDistance: 0)
+            .onChanged { _ in
+                guard isInteractive, !isCompleted else { return }
+                onPress()
+            }
+            .onEnded { _ in
+                guard isInteractive, !isCompleted else { return }
+                onRelease()
+            }
+
+        VStack(spacing: 10) {
+            ZStack {
+                if isCompleted {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.48, green: 0.72, blue: 0.54),
+                                    Color(red: 0.40, green: 0.62, blue: 0.48),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: diameter, height: diameter)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.45), Color.white.opacity(0.1)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(color: Color(red: 0.40, green: 0.62, blue: 0.48).opacity(0.35), radius: 12, x: 0, y: 4)
+
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                } else if inProgress {
+                    glassDisc
+                        .shadow(color: accent.opacity(0.2), radius: 10, x: 0, y: 2)
+
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(accent, style: StrokeStyle(lineWidth: ringWidth, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: diameter - ringWidth, height: diameter - ringWidth)
+
+                    Image(systemName: "hand.tap.fill")
+                        .font(.system(size: 26, weight: .medium))
+                        .foregroundStyle(primaryText.opacity(0.80))
+                } else {
+                    glassDisc
+
+                    Image(systemName: "hand.tap.fill")
+                        .font(.system(size: 26, weight: .medium))
+                        .foregroundStyle(primaryText.opacity(0.65))
+                }
+            }
+            .contentShape(Circle())
+            .gesture(gesture)
+            .animation(.spring(response: 0.35, dampingFraction: 0.72), value: isCompleted)
+
+            Text(isCompleted ? "Completed" : "Press & hold")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isCompleted ? primaryText : secondaryText)
+                .multilineTextAlignment(.center)
+                .frame(width: diameter + 8)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isCompleted ? "Completed" : "Press and hold to complete today's task")
+    }
+
+    private var glassDisc: some View {
+        Circle()
+            .fill(accentSoft.opacity(0.18))
+            .frame(width: diameter, height: diameter)
+            .background(
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: diameter, height: diameter)
+            )
+            .overlay(
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.45), Color.white.opacity(0.08)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -53,9 +190,7 @@ struct TopBar: View {
     let subtitle: String?
     let palette: AppThemePalette
     var showsBackButton = false
-    /// Opens the Home background picker (Home tab).
     var onHomeBackgroundTap: (() -> Void)? = nil
-    /// When set, shows a tappable share control that opens your share flow.
     var onShareTap: (() -> Void)? = nil
 
     var body: some View {
@@ -86,6 +221,8 @@ struct TopBar: View {
                         Image(systemName: "photo.on.rectangle.angled")
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
+                            .frame(width: 44, height: 44)
+                            .buttonLabelHitRect()
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Home background")
@@ -96,6 +233,8 @@ struct TopBar: View {
                         Image(systemName: "square.and.arrow.up")
                             .font(.headline)
                             .foregroundStyle(palette.primaryText)
+                            .frame(width: 44, height: 44)
+                            .buttonLabelHitRect()
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Share")
@@ -232,6 +371,8 @@ struct WeekProgressView: View {
 struct AchievementBadgeView: View {
     let achievement: Achievement
     let unlocked: Bool
+    /// When `true` and `unlocked`, shows Lock Screen selection (checkmark only).
+    var isLockScreenSelected: Bool = false
     let palette: AppThemePalette
 
     private var subtitle: String {
@@ -253,6 +394,10 @@ struct AchievementBadgeView: View {
         .frame(maxWidth: .infinity, alignment: .top)
     }
 
+    private var lockScreenSelectionActive: Bool {
+        unlocked && isLockScreenSelected
+    }
+
     private var badgeIcon: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
             .fill(palette.accent.opacity(0.15))
@@ -270,6 +415,21 @@ struct AchievementBadgeView: View {
                         color: unlocked ? achievement.rarity.glowColor : .clear,
                         radius: unlocked ? 10 : 0
                     )
+            }
+            .overlay(alignment: .topTrailing) {
+                if lockScreenSelectionActive {
+                    ZStack {
+                        Circle()
+                            .fill(palette.headerAccent)
+                            .frame(width: 26, height: 26)
+                            .shadow(color: palette.shadow.opacity(0.35), radius: 2, y: 1)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundStyle(.white)
+                    }
+                    .offset(x: 6, y: -6)
+                    .accessibilityLabel("Selected for Lock Screen widget")
+                }
             }
             .overlay(alignment: .bottomTrailing) {
                 if !unlocked {
@@ -306,99 +466,193 @@ struct AchievementBadgeView: View {
 struct BadgeDetailSheet: View {
     let achievement: Achievement
     let unlocked: Bool
+    var isLockScreenSelected: Bool = false
     let palette: AppThemePalette
+    var onSelectForLockScreen: () -> Void = {}
+    var onClearLockScreenSelection: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            palette.canvas
+                .ignoresSafeArea()
+
             VStack(spacing: 0) {
-                Spacer(minLength: 24)
+                badgeDetailHeader
 
-                ZStack {
-                    Circle()
-                        .fill(palette.accent.opacity(0.15))
-                        .frame(width: 120, height: 120)
-                        .overlay {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        ZStack {
                             Circle()
-                                .stroke(palette.accent.opacity(0.4), lineWidth: 2)
+                                .fill(palette.accent.opacity(0.15))
+                                .frame(width: 120, height: 120)
+                                .overlay {
+                                    Circle()
+                                        .stroke(palette.accent.opacity(0.4), lineWidth: 2)
+                                }
+                                .shadow(
+                                    color: unlocked ? achievement.rarity.glowColor : .clear,
+                                    radius: unlocked ? 16 : 0
+                                )
+
+                            Image(systemName: achievement.symbolName)
+                                .font(.system(size: 48))
+                                .foregroundStyle(palette.accent)
+
+                            if unlocked && isLockScreenSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 28))
+                                    .symbolRenderingMode(.palette)
+                                    .foregroundStyle(.white, palette.headerAccent)
+                                    .offset(x: 44, y: -44)
+                                    .accessibilityHidden(true)
+                            }
+
+                            if !unlocked {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(palette.secondaryText.opacity(0.7))
+                                    .padding(5)
+                                    .background(
+                                        Circle()
+                                            .fill(palette.card)
+                                            .shadow(color: palette.shadow, radius: 2, y: 1)
+                                    )
+                                    .offset(x: 38, y: 38)
+                            }
                         }
-                        .shadow(
-                            color: unlocked ? achievement.rarity.glowColor : .clear,
-                            radius: unlocked ? 16 : 0
-                        )
 
-                    Image(systemName: achievement.symbolName)
-                        .font(.system(size: 48))
-                        .foregroundStyle(palette.accent)
+                        Text(achievement.name)
+                            .font(.system(.title2, design: .serif, weight: .semibold))
+                            .foregroundStyle(palette.primaryText)
+                            .padding(.top, 20)
 
-                    if !unlocked {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(palette.secondaryText.opacity(0.7))
-                            .padding(5)
-                            .background(
-                                Circle()
-                                    .fill(palette.card)
-                                    .shadow(color: palette.shadow, radius: 2, y: 1)
-                            )
-                            .offset(x: 38, y: 38)
+                        Text(achievement.badgeDescription)
+                            .font(.body)
+                            .foregroundStyle(palette.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 6)
+                            .padding(.horizontal, 32)
+
+                        Divider()
+                            .overlay(palette.border.opacity(0.7))
+                            .padding(.vertical, 24)
+                            .padding(.horizontal, 40)
+
+                        VStack(spacing: 14) {
+                            badgeInfoRow(label: "Type", value: badgeTypeLabel)
+                            badgeInfoRow(label: "Rarity", value: achievement.rarity.rawValue.capitalized)
+                            badgeInfoRow(label: "Requirement", value: requirementLabel)
+                            badgeInfoRow(label: "Status", value: unlocked ? "Earned" : "Locked")
+                        }
+                        .padding(.horizontal, 32)
+
+                        if unlocked {
+                            lockScreenWidgetSection
+                                .padding(.horizontal, 28)
+                                .padding(.top, 24)
+                        }
+
+                        if unlocked {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .foregroundStyle(palette.accent)
+                                Text("You earned this badge!")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(palette.accent)
+                            }
+                            .padding(.top, 24)
+                        } else {
+                            Text("Keep going to unlock this badge")
+                                .font(.subheadline)
+                                .foregroundStyle(palette.secondaryText)
+                                .padding(.top, 24)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
                 }
-
-                Text(achievement.name)
-                    .font(.system(.title2, design: .serif, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
-                    .padding(.top, 20)
-
-                Text(achievement.badgeDescription)
-                    .font(.body)
-                    .foregroundStyle(palette.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 6)
-                    .padding(.horizontal, 32)
-
-                Divider()
-                    .overlay(palette.border.opacity(0.7))
-                    .padding(.vertical, 24)
-                    .padding(.horizontal, 40)
-
-                VStack(spacing: 14) {
-                    badgeInfoRow(label: "Type", value: badgeTypeLabel)
-                    badgeInfoRow(label: "Rarity", value: achievement.rarity.rawValue.capitalized)
-                    badgeInfoRow(label: "Requirement", value: requirementLabel)
-                    badgeInfoRow(label: "Status", value: unlocked ? "Earned" : "Locked")
-                }
-                .padding(.horizontal, 32)
-
-                Spacer(minLength: 32)
-
-                if unlocked {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(palette.accent)
-                        Text("You earned this badge!")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(palette.accent)
-                    }
-                    .padding(.bottom, 24)
-                } else {
-                    Text("Keep going to unlock this badge")
-                        .font(.subheadline)
-                        .foregroundStyle(palette.secondaryText)
-                        .padding(.bottom, 24)
-                }
+                .scrollContentBackground(.hidden)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.canvas.ignoresSafeArea())
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                        .foregroundStyle(palette.accent)
-                }
-            }
-            .toolbarBackground(palette.card.opacity(0.92), for: .navigationBar)
         }
+        .compositingGroup()
+    }
+
+    private var badgeDetailHeader: some View {
+        HStack(alignment: .center) {
+            Button {
+                dismiss()
+            } label: {
+                Text("Close")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(palette.accent)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 4)
+                    .buttonLabelHitRect()
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close")
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(palette.canvas)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(palette.border.opacity(0.55))
+                .frame(height: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var lockScreenWidgetSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Lock Screen widget")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(palette.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.8)
+
+            if isLockScreenSelected {
+                Label("Using on Lock Screen", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(palette.accent)
+
+                Text("This badge appears when you add the Bible Life Lock Screen widget.")
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    onClearLockScreenSelection()
+                    dismiss()
+                } label: {
+                    Label("Remove from Lock Screen widget", systemImage: "iphone.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .buttonLabelHitRoundRect(cornerRadius: 12)
+                }
+                .buttonStyle(.bordered)
+                .tint(palette.secondaryText)
+            } else {
+                Button {
+                    onSelectForLockScreen()
+                    dismiss()
+                } label: {
+                    Label("Use for Lock Screen widget", systemImage: "iphone.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .buttonLabelHitRoundRect(cornerRadius: 12)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(palette.headerAccent)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var badgeTypeLabel: String {
@@ -535,6 +789,7 @@ struct BadgeUnlockedSheet: View {
                             )
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .buttonLabelHitRoundRect(cornerRadius: 20)
                         .shadow(color: palette.shadow.opacity(0.34), radius: 18, x: 0, y: 10)
                 }
                 .buttonStyle(.plain)
@@ -697,29 +952,6 @@ struct WidgetPreviewCard: View {
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(palette.border.opacity(0.75), lineWidth: 1)
-        )
-    }
-}
-
-struct ThemeSwatchView: View {
-    let colors: [Color]
-    let isSelected: Bool
-    let palette: AppThemePalette
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(Array(colors.enumerated()), id: \.offset) { _, color in
-                Circle()
-                    .fill(color)
-                    .frame(width: 18, height: 18)
-            }
-        }
-        .padding(10)
-        .background(palette.card.opacity(isSelected ? 1 : 0.7))
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .stroke(isSelected ? palette.accent : palette.border, lineWidth: 1)
         )
     }
 }

@@ -2,24 +2,28 @@ import Photos
 import SwiftUI
 import UIKit
 
-// MARK: - Export (square: fits phone preview + works for Instagram / feeds)
+// MARK: - Export (9:16 — Instagram Stories / WhatsApp status, 1080×1920)
 
 private enum ShareExportLayout {
-    static let side: CGFloat = 1080
-    static let previewMaxHeight: CGFloat = 280
-    static let horizontalPadding: CGFloat = 48
+    static let width: CGFloat = 1080
+    static let height: CGFloat = 1920
+    static var aspectRatio: CGFloat { width / height }
+    /// ~390pt reference iPhone width: verse/task match on-screen home proportions at export width.
+    static let storyTypographyScale: CGFloat = width / 390
+    static let previewMaxHeight: CGFloat = 360
+    static let horizontalPadding: CGFloat = 56
 }
 
 // MARK: - Payload
 
 enum ShareDrawerPayload: Identifiable, Equatable {
-    case verse(DailyRecord)
+    case verse(DailyRecord, wallpaper: HomeWallpaper)
     case streak(StreakSummary, week: [DailyRecord?])
 
     var id: String {
         switch self {
-        case .verse(let r):
-            return "v-\(r.id.uuidString)"
+        case .verse(let r, let wallpaper):
+            return "v-\(r.id.uuidString)-\(wallpaper.rawValue)"
         case .streak(let s, let week):
             let bits = week.map { $0?.completed == true ? "1" : "0" }.joined()
             return "s-\(s.currentStreak)-\(s.longestStreak)-\(bits)"
@@ -50,159 +54,102 @@ private struct ShareThemedCanvas: View {
                 .fill(palette.tabInactive.opacity(0.25))
                 .frame(width: 360, height: 360)
                 .blur(radius: 45)
-                .offset(x: -280, y: 340)
+                .offset(x: -280, y: ShareExportLayout.height * 0.36)
         }
-        .frame(width: ShareExportLayout.side, height: ShareExportLayout.side)
+        .frame(width: ShareExportLayout.width, height: ShareExportLayout.height)
         .clipped()
     }
 }
 
-// MARK: - Verse + task (verse-task widget style: left verse, right task column)
+// MARK: - Verse share template (home wallpaper + verse + white task card + watermark)
 
 struct ShareableVerseCardLayout: View {
     let record: DailyRecord
-    let palette: AppThemePalette
+    let wallpaper: HomeWallpaper
+    /// When `false`, export verse-only (no task card) for free-tier users.
+    var showsTaskCard: Bool = true
 
-    private let pad = ShareExportLayout.horizontalPadding
+    private let w = ShareExportLayout.width
+    private let h = ShareExportLayout.height
+    private var fg: HomeForegroundStyle { wallpaper.homeForeground }
+    private var typeScale: CGFloat { ShareExportLayout.storyTypographyScale }
 
     var body: some View {
         ZStack {
-            ShareThemedCanvas(palette: palette)
-
-            VStack(alignment: .leading, spacing: 0) {
-                header
-
-                Spacer(minLength: 20)
-
-                verseAndTaskRow
-
-                Spacer(minLength: 16)
-
-                footer
-            }
-            .padding(.horizontal, pad)
-            .padding(.vertical, 44)
-        }
-        .frame(width: ShareExportLayout.side, height: ShareExportLayout.side)
-    }
-
-    private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Bible Life")
-                    .font(.system(size: 22, weight: .semibold, design: .serif))
-                    .foregroundStyle(palette.primaryText)
-                Text("Live the Word")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(palette.secondaryText)
-            }
-            Spacer(minLength: 8)
-            Text(record.verse.date, format: .dateTime.month(.abbreviated).day().year())
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(palette.secondaryText)
-        }
-    }
-
-    private var verseAndTaskRow: some View {
-        HStack(alignment: .top, spacing: 20) {
-            verseColumn
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            taskColumn
-                .frame(width: ShareExportLayout.side * 0.34)
-        }
-    }
-
-    private var verseColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("DAILY VERSE")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(palette.secondaryText)
-
-            Text("\"\(record.verse.text)\"")
-                .font(.system(size: 26, weight: .medium, design: .serif))
-                .foregroundStyle(palette.primaryText)
-                .lineSpacing(7)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .layoutPriority(1)
-                .minimumScaleFactor(0.72)
-                .lineLimit(12)
-
-            Text(record.verse.reference)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(palette.accent)
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(palette.card.opacity(0.92))
-                .shadow(color: palette.shadow.opacity(0.5), radius: 12, y: 6)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(palette.border.opacity(0.65), lineWidth: 1)
-        )
-    }
-
-    private var taskColumn: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(palette.card.opacity(0.55))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(palette.border.opacity(0.75), lineWidth: 1)
-            )
-            .overlay(alignment: .topLeading) {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(palette.canvas.opacity(0.95))
-                            .frame(width: 40, height: 40)
-                            .overlay {
-                                Image(systemName: record.verse.symbolName)
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(palette.accent)
-                            }
-
-                        Text("TODAY'S TASK")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(palette.secondaryText)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.8)
-                    }
-
-                    Text(record.verse.taskTitle)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-                        .lineLimit(4)
-                        .minimumScaleFactor(0.8)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(record.verse.taskDescription)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                        .lineSpacing(3)
-                        .lineLimit(6)
-                        .minimumScaleFactor(0.85)
-                        .fixedSize(horizontal: false, vertical: true)
+            Group {
+                if let assetName = wallpaper.imageAssetName {
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .overlay(Color.black.opacity(0.18))
+                } else if let gradient = wallpaper.homeLinearGradient {
+                    gradient
+                } else {
+                    wallpaper.solidBackgroundColor
                 }
-                .padding(16)
             }
-    }
+            .frame(width: w, height: h)
+            .clipped()
 
-    private var footer: some View {
-        Text("Bible Life · Live the Word")
-            .font(.system(size: 15, weight: .medium))
-            .foregroundStyle(palette.secondaryText.opacity(0.9))
-            .frame(maxWidth: .infinity)
-            .multilineTextAlignment(.center)
+            VStack(spacing: 0) {
+                Spacer(minLength: 120)
+
+                HomeDayVerseSection(record: record, fg: fg, fontScale: typeScale)
+                    .padding(.horizontal, ShareExportLayout.horizontalPadding)
+
+                if showsTaskCard {
+                    Spacer(minLength: 56)
+
+                    HomeDayTaskCardTextOnly(record: record, fg: fg, fontScale: typeScale, isViewingToday: true)
+                        .padding(.horizontal, ShareExportLayout.horizontalPadding)
+                } else {
+                    Spacer(minLength: 48)
+                }
+
+                Spacer(minLength: 72)
+
+                ShareVerseWatermark(fg: fg, scale: min(typeScale / 2.35, 1.28))
+                    .padding(.bottom, 100)
+            }
+        }
+        .frame(width: w, height: h)
     }
 }
 
-// MARK: - Streak (streak widget style)
+private struct ShareVerseWatermark: View {
+    let fg: HomeForegroundStyle
+    /// Relative to the original 1× story mark; keeps branding readable on tall exports.
+    var scale: CGFloat = 1
+
+    var body: some View {
+        let logo = 36 * scale
+        let corner = 9 * scale
+        HStack(spacing: 10 * scale) {
+            Image("LaunchLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: logo, height: logo)
+                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+
+            Text("Bible Life")
+                .font(.system(size: 18 * scale, weight: .semibold, design: .default))
+                .foregroundStyle(fg.primary)
+        }
+        .padding(.horizontal, 18 * scale)
+        .padding(.vertical, 10 * scale)
+        .background(
+            Capsule(style: .continuous)
+                .fill(fg.taskCardFill.opacity(0.92))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(fg.glassStroke.opacity(0.9), lineWidth: 1)
+                )
+        )
+        .shadow(color: fg.taskCardShadow, radius: 8 * scale, x: 0, y: 4 * scale)
+    }
+}
+
+// MARK: - Streak (full-height story: hero + stat cards + week row)
 
 private let shareWeekdayLabels = ["S", "M", "T", "W", "T", "F", "S"]
 
@@ -211,7 +158,10 @@ struct ShareableStreakCardLayout: View {
     let week: [DailyRecord?]
     let palette: AppThemePalette
 
+    private let w = ShareExportLayout.width
+    private let h = ShareExportLayout.height
     private let pad = ShareExportLayout.horizontalPadding
+    private var s: CGFloat { ShareExportLayout.storyTypographyScale }
 
     /// Seven entries for S–S, padded with `nil` if needed (matches home journey week row).
     private var weekPadded: [DailyRecord?] {
@@ -219,139 +169,194 @@ struct ShareableStreakCardLayout: View {
         return week + Array(repeating: nil, count: 7 - week.count)
     }
 
+    private var heroDiameter: CGFloat { min(w * 0.52, 560) }
+    private var heroNumberSize: CGFloat { heroDiameter * 0.34 }
+    private var dayStreakCaptionSize: CGFloat { max(22, 26 * s / 2.45) }
+    private var headlineSize: CGFloat { max(34, 40 * s / 2.5) }
+    private var statCardCorner: CGFloat { 28 * s / 2.45 }
+    private var weekDot: CGFloat { min(56 * s / 2.45, 68) }
+    private var weekLabelSize: CGFloat { max(16, 18 * s / 2.45) }
+
     var body: some View {
         ZStack {
             ShareThemedCanvas(palette: palette)
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Bible Life")
-                    .font(.system(size: 22, weight: .semibold, design: .serif))
-                    .foregroundStyle(palette.primaryText)
-                Text("My streak")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(palette.secondaryText)
-                    .padding(.bottom, 20)
+            VStack(spacing: 0) {
+                Spacer(minLength: h * 0.06)
 
-                topStatsRow
+                streakStoryHeader
+                    .padding(.horizontal, pad)
 
-                totalDaysCard
-                    .padding(.vertical, 18)
+                Spacer(minLength: h * 0.04)
 
-                Divider()
-                    .overlay(palette.border.opacity(0.75))
-
-                thisWeekSection
-
-                Spacer(minLength: 12)
-
-                Text("Bible Life · Live the Word")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(palette.secondaryText.opacity(0.9))
+                streakHeroOrb
                     .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
+
+                Spacer(minLength: h * 0.045)
+
+                streakStatPairRow
+                    .padding(.horizontal, pad)
+
+                Spacer(minLength: h * 0.05)
+
+                streakWeekSection
+                    .padding(.horizontal, pad)
+
+                Spacer(minLength: h * 0.04)
+
+                streakStoryFooter
+                    .padding(.horizontal, pad + 8)
+
+                Spacer(minLength: h * 0.07)
             }
-            .padding(.horizontal, pad)
-            .padding(.vertical, 44)
+            .frame(width: w, height: h)
         }
-        .frame(width: ShareExportLayout.side, height: ShareExportLayout.side)
+        .frame(width: w, height: h)
     }
 
-    private var topStatsRow: some View {
-        HStack(alignment: .top) {
-            HStack(spacing: 14) {
-                Circle()
-                    .fill(palette.headerAccent.opacity(0.92))
-                    .frame(width: 52, height: 52)
-                    .overlay {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Current Streak")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                    Text("\(summary.currentStreak)")
-                        .font(.system(size: 40, weight: .semibold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-                }
-            }
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Longest")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(palette.secondaryText)
-                Text("\(summary.longestStreak)")
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+    private var streakStoryHeader: some View {
+        VStack(spacing: 14 * s / 2.6) {
+            HStack(spacing: 14 * s / 2.6) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: headlineSize * 0.62, weight: .semibold))
+                    .foregroundStyle(palette.accent)
+                Text("Streak unlocked")
+                    .font(.system(size: headlineSize, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
             }
-        }
-    }
-
-    private var totalDaysCard: some View {
-        VStack(spacing: 6) {
-            Text("Total Days Completed")
-                .font(.system(size: 15, weight: .medium))
+            Text("Bible Life")
+                .font(.system(size: 20 * s / 2.5, weight: .semibold, design: .serif))
                 .foregroundStyle(palette.secondaryText)
-            Text("\(summary.totalCompletedDays)")
-                .font(.system(size: 36, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
+        .multilineTextAlignment(.center)
+    }
+
+    private var streakHeroOrb: some View {
+        let streak = summary.currentStreak
+        let caption = streak == 1 ? "DAY STREAK" : "DAYS STREAK"
+        return ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [palette.accent, palette.headerAccent.opacity(0.92)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: heroDiameter, height: heroDiameter)
+                .shadow(color: palette.shadow.opacity(0.35), radius: 28, x: 0, y: 14)
+
+            VStack(spacing: heroDiameter * 0.045) {
+                Text("\(streak)")
+                    .font(.system(size: heroNumberSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .minimumScaleFactor(0.35)
+                    .lineLimit(1)
+                    .shadow(color: .black.opacity(0.12), radius: 2, x: 0, y: 2)
+
+                Text(caption)
+                    .font(.system(size: dayStreakCaptionSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.95))
+                    .tracking(3)
+            }
+            .padding(.vertical, heroDiameter * 0.06)
+        }
+    }
+
+    private var streakStatPairRow: some View {
+        let gap: CGFloat = 22 * s / 2.5
+        let labelPt = max(17, 19 * s / 2.5)
+        let valuePt = max(44, 52 * s / 2.5)
+        return HStack(alignment: .top, spacing: gap) {
+            streakStatCard(title: "Longest", value: "\(summary.longestStreak)", labelPt: labelPt, valuePt: valuePt)
+            streakStatCard(title: "Total days", value: "\(summary.totalCompletedDays)", labelPt: labelPt, valuePt: valuePt)
+        }
+    }
+
+    private func streakStatCard(title: String, value: String, labelPt: CGFloat, valuePt: CGFloat) -> some View {
+        VStack(spacing: 10 * s / 2.5) {
+            Text(title)
+                .font(.system(size: labelPt, weight: .medium, design: .rounded))
+                .foregroundStyle(palette.secondaryText)
+            Text(value)
+                .font(.system(size: valuePt, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28 * s / 2.5)
+        .padding(.horizontal, 12)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.card.opacity(0.55))
+            RoundedRectangle(cornerRadius: statCardCorner, style: .continuous)
+                .fill(palette.card)
+                .shadow(color: palette.shadow.opacity(0.2), radius: 12, x: 0, y: 6)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(palette.border.opacity(0.7), lineWidth: 1)
+            RoundedRectangle(cornerRadius: statCardCorner, style: .continuous)
+                .stroke(palette.border.opacity(0.55), lineWidth: 1)
         )
     }
 
-    private var thisWeekSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private var streakWeekSection: some View {
+        VStack(spacing: 22 * s / 2.5) {
             Text("THIS WEEK")
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: max(15, 17 * s / 2.45), weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
+                .tracking(1.2)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { index in
-                    weekdayCell(index: index)
+                    streakWeekdayCell(index: index)
                 }
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(.top, 8)
+        .frame(maxWidth: .infinity)
     }
 
-    private func weekdayCell(index: Int) -> some View {
+    private func streakWeekdayCell(index: Int) -> some View {
         let completed = weekPadded[index]?.completed == true
         let label = shareWeekdayLabels.indices.contains(index) ? shareWeekdayLabels[index] : "?"
-        let circleSize: CGFloat = 52
+        let strokeW: CGFloat = completed ? 0 : max(2, 2.5 * s / 2.45)
 
-        return VStack(spacing: 8) {
-            Circle()
-                .fill(completed ? palette.accent : palette.card)
-                .frame(width: circleSize, height: circleSize)
-                .overlay {
+        return VStack(spacing: 12 * s / 2.5) {
+            ZStack {
+                Circle()
+                    .fill(completed ? palette.accent : Color.clear)
+                    .frame(width: weekDot, height: weekDot)
+                if !completed {
                     Circle()
-                        .stroke(completed ? palette.accent.opacity(0.35) : palette.border, lineWidth: 1)
+                        .stroke(palette.accent.opacity(0.85), lineWidth: strokeW)
+                        .frame(width: weekDot, height: weekDot)
                 }
-                .overlay {
-                    if completed {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
+                if completed {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: weekDot * 0.36, weight: .bold))
+                        .foregroundStyle(.white)
                 }
+            }
 
             Text(label)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(palette.secondaryText)
+                .font(.system(size: weekLabelSize, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var streakStoryFooter: some View {
+        VStack(spacing: 20 * s / 2.5) {
+            Text("Consistency is worship")
+                .font(.system(size: max(22, 26 * s / 2.45), weight: .semibold, design: .serif))
+                .foregroundStyle(palette.primaryText.opacity(0.92))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+
+            Text("Bible Life · Live the Word")
+                .font(.system(size: max(16, 18 * s / 2.55), weight: .medium, design: .rounded))
+                .foregroundStyle(palette.secondaryText.opacity(0.95))
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
     }
@@ -362,21 +367,22 @@ struct ShareableStreakCardLayout: View {
 struct ShareableCardPreview: View {
     let payload: ShareDrawerPayload
     let palette: AppThemePalette
+    var verseShareIncludesTask: Bool = true
 
     var body: some View {
-        let w = ShareExportLayout.side
-        let h = ShareExportLayout.side
+        let w = ShareExportLayout.width
+        let h = ShareExportLayout.height
 
         Color.clear
             .frame(maxHeight: ShareExportLayout.previewMaxHeight)
-            .aspectRatio(1, contentMode: .fit)
+            .aspectRatio(ShareExportLayout.aspectRatio, contentMode: .fit)
             .overlay {
                 GeometryReader { geo in
                     let scale = min(geo.size.width / w, geo.size.height / h)
                     Group {
                         switch payload {
-                        case .verse(let record):
-                            ShareableVerseCardLayout(record: record, palette: palette)
+                        case .verse(let record, let wallpaper):
+                            ShareableVerseCardLayout(record: record, wallpaper: wallpaper, showsTaskCard: verseShareIncludesTask)
                         case .streak(let summary, let week):
                             ShareableStreakCardLayout(summary: summary, week: week, palette: palette)
                         }
@@ -400,11 +406,11 @@ struct ShareableCardPreview: View {
 
 @MainActor
 enum ShareImageRenderer {
-    static func render(_ payload: ShareDrawerPayload, palette: AppThemePalette) -> UIImage? {
+    static func render(_ payload: ShareDrawerPayload, palette: AppThemePalette, verseShareIncludesTask: Bool = true) -> UIImage? {
         let content: AnyView = {
             switch payload {
-            case .verse(let r):
-                return AnyView(ShareableVerseCardLayout(record: r, palette: palette))
+            case .verse(let r, let wallpaper):
+                return AnyView(ShareableVerseCardLayout(record: r, wallpaper: wallpaper, showsTaskCard: verseShareIncludesTask))
             case .streak(let s, let w):
                 return AnyView(ShareableStreakCardLayout(summary: s, week: w, palette: palette))
             }
@@ -415,8 +421,8 @@ enum ShareImageRenderer {
         if #available(iOS 17.0, *) {
             renderer.isOpaque = true
             renderer.proposedSize = ProposedViewSize(
-                width: ShareExportLayout.side,
-                height: ShareExportLayout.side
+                width: ShareExportLayout.width,
+                height: ShareExportLayout.height
             )
         }
         return renderer.uiImage
@@ -448,32 +454,33 @@ private struct SharePaletteButton: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
                 .font(.headline)
+                .foregroundStyle(isPrimary ? Color.white : palette.primaryText)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 15)
+                .background {
+                    if isPrimary {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [palette.headerAccent, palette.accent],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .shadow(color: palette.shadow.opacity(0.45), radius: 10, y: 5)
+                    } else {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(palette.card)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(palette.border.opacity(0.85), lineWidth: 1.2)
+                            )
+                            .shadow(color: palette.shadow.opacity(0.25), radius: 8, y: 4)
+                    }
+                }
+                .buttonLabelHitRoundRect(cornerRadius: 16)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isPrimary ? Color.white : palette.primaryText)
-        .background {
-            if isPrimary {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [palette.headerAccent, palette.accent],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .shadow(color: palette.shadow.opacity(0.45), radius: 10, y: 5)
-            } else {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(palette.card)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(palette.border.opacity(0.85), lineWidth: 1.2)
-                    )
-                    .shadow(color: palette.shadow.opacity(0.25), radius: 8, y: 4)
-            }
-        }
     }
 }
 
@@ -482,6 +489,8 @@ private struct SharePaletteButton: View {
 struct ShareDrawerSheet: View {
     let payload: ShareDrawerPayload
     let palette: AppThemePalette
+    /// Verse shares omit the task card when `false` (free tier).
+    var verseShareIncludesTask: Bool = true
     @Environment(\.dismiss) private var dismiss
 
     @State private var renderedImage: UIImage?
@@ -491,8 +500,13 @@ struct ShareDrawerSheet: View {
     @State private var showSaveAlert = false
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            palette.canvas
+                .ignoresSafeArea()
+
             VStack(spacing: 0) {
+                shareSheetHeader
+
                 VStack(spacing: 14) {
                     Text("Share to Instagram, WhatsApp, Messages, and more.")
                         .font(.subheadline)
@@ -500,7 +514,7 @@ struct ShareDrawerSheet: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 8)
 
-                    ShareableCardPreview(payload: payload, palette: palette)
+                    ShareableCardPreview(payload: payload, palette: palette, verseShareIncludesTask: verseShareIncludesTask)
                         .padding(.horizontal, 8)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Share preview")
@@ -546,32 +560,57 @@ struct ShareDrawerSheet: View {
                 .padding(.top, 8)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.canvas.ignoresSafeArea())
-            .navigationTitle("Share")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                        .foregroundStyle(palette.accent)
+        }
+        .compositingGroup()
+        .alert("Photos", isPresented: $showSaveAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveMessage ?? "")
+        }
+        .sheet(isPresented: $showActivity) {
+            if let renderedImage {
+                ShareActivityView(items: [renderedImage])
+                    .presentationDetents([.medium, .large])
+            }
+        }
+        .task(id: payload.id) {
+            isRendering = true
+            renderedImage = ShareImageRenderer.render(payload, palette: palette, verseShareIncludesTask: verseShareIncludesTask)
+            isRendering = false
+        }
+    }
+
+    private var shareSheetHeader: some View {
+        ZStack {
+            Text("Share")
+                .font(.headline)
+                .foregroundStyle(palette.primaryText)
+
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Done")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(palette.primaryText)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 4)
+                        .buttonLabelHitRect()
                 }
+                .buttonStyle(.plain)
+                Spacer()
+                Color.clear
+                    .frame(width: 44, height: 1)
+                    .accessibilityHidden(true)
             }
-            .toolbarBackground(palette.card.opacity(0.92), for: .navigationBar)
-            .alert("Photos", isPresented: $showSaveAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(saveMessage ?? "")
-            }
-            .sheet(isPresented: $showActivity) {
-                if let renderedImage {
-                    ShareActivityView(items: [renderedImage])
-                        .presentationDetents([.medium, .large])
-                }
-            }
-            .task(id: payload.id) {
-                isRendering = true
-                renderedImage = ShareImageRenderer.render(payload, palette: palette)
-                isRendering = false
-            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(palette.canvas)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(palette.border.opacity(0.55))
+                .frame(height: 1)
         }
     }
 
