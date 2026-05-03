@@ -19,14 +19,15 @@ final class BibleReaderViewModel: ObservableObject {
     }
 
     @Published var fontScale: Double {
-        didSet { persistence.setBibleReaderFontScale(fontScale) }
+        didSet { scheduleReaderAppearancePersistence() }
     }
 
     @Published var lineSpacingExtra: Double {
-        didSet { persistence.setBibleReaderLineSpacingExtra(lineSpacingExtra) }
+        didSet { scheduleReaderAppearancePersistence() }
     }
 
     private let persistence: AppPersistence
+    private var appearancePersistTask: Task<Void, Never>?
 
     init(persistence: AppPersistence, book: String, chapter: Int) {
         self.persistence = persistence
@@ -67,5 +68,24 @@ final class BibleReaderViewModel: ObservableObject {
         self.book = book
         self.chapter = chapter
         Task { await applyCurrentChapter() }
+    }
+
+    /// Persists font and line spacing after interaction settles (avoids disk I/O every drag frame on device).
+    private func scheduleReaderAppearancePersistence() {
+        appearancePersistTask?.cancel()
+        appearancePersistTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            persistence.setBibleReaderFontScale(fontScale)
+            persistence.setBibleReaderLineSpacingExtra(lineSpacingExtra)
+        }
+    }
+
+    /// Call when the reading options sheet closes so the latest values are saved even if debounce has not fired.
+    func flushReaderAppearancePersistence() {
+        appearancePersistTask?.cancel()
+        appearancePersistTask = nil
+        persistence.setBibleReaderFontScale(fontScale)
+        persistence.setBibleReaderLineSpacingExtra(lineSpacingExtra)
     }
 }

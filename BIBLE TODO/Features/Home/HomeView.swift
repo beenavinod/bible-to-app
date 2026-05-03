@@ -125,6 +125,8 @@ struct HomeView: View {
             )
                 .presentationDetents([.height(520), .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(appState.palette.canvas)
+                .presentationBackgroundInteraction(.disabled)
         }
         .fullScreenCover(isPresented: $showBibleReader) {
             BibleReaderView(

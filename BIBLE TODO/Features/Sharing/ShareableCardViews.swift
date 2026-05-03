@@ -434,63 +434,68 @@ struct ShareDrawerSheet: View {
     @State private var showSaveAlert = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            shareSheetHeader
+        ZStack {
+            palette.canvas
+                .ignoresSafeArea()
 
-            VStack(spacing: 14) {
-                Text("Share to Instagram, WhatsApp, Messages, and more.")
-                    .font(.subheadline)
-                    .foregroundStyle(palette.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
+            VStack(spacing: 0) {
+                shareSheetHeader
 
-                ShareableCardPreview(payload: payload, palette: palette, verseShareIncludesTask: verseShareIncludesTask)
-                    .padding(.horizontal, 8)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Share preview")
-
-                if isRendering {
-                    ProgressView("Preparing image…")
-                        .tint(palette.accent)
+                VStack(spacing: 14) {
+                    Text("Share to Instagram, WhatsApp, Messages, and more.")
+                        .font(.subheadline)
                         .foregroundStyle(palette.secondaryText)
-                        .padding(.vertical, 4)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+
+                    ShareableCardPreview(payload: payload, palette: palette, verseShareIncludesTask: verseShareIncludesTask)
+                        .padding(.horizontal, 8)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Share preview")
+
+                    if isRendering {
+                        ProgressView("Preparing image…")
+                            .tint(palette.accent)
+                            .foregroundStyle(palette.secondaryText)
+                            .padding(.vertical, 4)
+                    }
                 }
+                .padding(.top, 8)
+                .padding(.bottom, 16)
+
+                Spacer(minLength: 0)
+
+                VStack(spacing: 12) {
+                    SharePaletteButton(
+                        title: "Share",
+                        systemImage: "square.and.arrow.up",
+                        palette: palette,
+                        isPrimary: true
+                    ) {
+                        guard renderedImage != nil else { return }
+                        showActivity = true
+                    }
+                    .disabled(renderedImage == nil)
+                    .opacity(renderedImage == nil ? 0.55 : 1)
+
+                    SharePaletteButton(
+                        title: "Save to Photos",
+                        systemImage: "arrow.down.circle.fill",
+                        palette: palette,
+                        isPrimary: false
+                    ) {
+                        saveToPhotos()
+                    }
+                    .disabled(renderedImage == nil)
+                    .opacity(renderedImage == nil ? 0.55 : 1)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+                .padding(.top, 8)
             }
-            .padding(.top, 8)
-            .padding(.bottom, 16)
-
-            Spacer(minLength: 0)
-
-            VStack(spacing: 12) {
-                SharePaletteButton(
-                    title: "Share",
-                    systemImage: "square.and.arrow.up",
-                    palette: palette,
-                    isPrimary: true
-                ) {
-                    guard renderedImage != nil else { return }
-                    showActivity = true
-                }
-                .disabled(renderedImage == nil)
-                .opacity(renderedImage == nil ? 0.55 : 1)
-
-                SharePaletteButton(
-                    title: "Save to Photos",
-                    systemImage: "arrow.down.circle.fill",
-                    palette: palette,
-                    isPrimary: false
-                ) {
-                    saveToPhotos()
-                }
-                .disabled(renderedImage == nil)
-                .opacity(renderedImage == nil ? 0.55 : 1)
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 24)
-            .padding(.top, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(palette.canvas.ignoresSafeArea())
+        .compositingGroup()
         .alert("Photos", isPresented: $showSaveAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -519,6 +524,7 @@ struct ShareDrawerSheet: View {
                 Button("Done") { dismiss() }
                     .font(.body.weight(.semibold))
                     .foregroundStyle(palette.primaryText)
+                    .buttonStyle(.plain)
                 Spacer()
                 Color.clear
                     .frame(width: 44, height: 1)

@@ -117,6 +117,9 @@ struct BibleReaderView: View {
         .task {
             await model.loadIndexAndChapter()
         }
+        .onDisappear {
+            model.flushReaderAppearancePersistence()
+        }
         .sheet(isPresented: $showBookPicker) {
             BibleBookChapterPickerSheet(
                 appPalette: appPalette,
@@ -139,6 +142,8 @@ struct BibleReaderView: View {
             BibleReaderOptionsSheet(model: model, appPalette: appPalette)
                 .presentationDetents([.height(340)])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(appPalette.card)
+                .presentationBackgroundInteraction(.disabled)
         }
     }
 
@@ -321,27 +326,36 @@ private struct BibleReaderOptionsSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(alignment: .center) {
-                Text("Reading")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(appPalette.primaryText)
-                Spacer()
-                Button("Done") { dismiss() }
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(appPalette.accent)
-            }
-            .padding(.top, 4)
+        ZStack {
+            appPalette.card
+                .ignoresSafeArea()
 
-            fontSizeRow
-            lineSpacingRow
-            themeRow
-            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .center) {
+                    Text("Reading")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(appPalette.primaryText)
+                    Spacer()
+                    Button("Done") { dismiss() }
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(appPalette.accent)
+                        .buttonStyle(.plain)
+                }
+                .padding(.top, 4)
+
+                fontSizeRow
+                lineSpacingRow
+                themeRow
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(appPalette.card)
+        .compositingGroup()
+        .onDisappear {
+            model.flushReaderAppearancePersistence()
+        }
     }
 
     private var fontSizeRow: some View {

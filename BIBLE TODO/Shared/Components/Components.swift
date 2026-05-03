@@ -469,109 +469,133 @@ struct BadgeDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    ZStack {
-                        Circle()
-                            .fill(palette.accent.opacity(0.15))
-                            .frame(width: 120, height: 120)
-                            .overlay {
-                                Circle()
-                                    .stroke(palette.accent.opacity(0.4), lineWidth: 2)
-                            }
-                            .shadow(
-                                color: unlocked ? achievement.rarity.glowColor : .clear,
-                                radius: unlocked ? 16 : 0
-                            )
+        ZStack {
+            palette.canvas
+                .ignoresSafeArea()
 
-                        Image(systemName: achievement.symbolName)
-                            .font(.system(size: 48))
-                            .foregroundStyle(palette.accent)
+            VStack(spacing: 0) {
+                badgeDetailHeader
 
-                        if unlocked && isLockScreenSelected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 28))
-                                .symbolRenderingMode(.palette)
-                                .foregroundStyle(.white, palette.headerAccent)
-                                .offset(x: 44, y: -44)
-                                .accessibilityHidden(true)
-                        }
-
-                        if !unlocked {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(palette.secondaryText.opacity(0.7))
-                                .padding(5)
-                                .background(
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        ZStack {
+                            Circle()
+                                .fill(palette.accent.opacity(0.15))
+                                .frame(width: 120, height: 120)
+                                .overlay {
                                     Circle()
-                                        .fill(palette.card)
-                                        .shadow(color: palette.shadow, radius: 2, y: 1)
+                                        .stroke(palette.accent.opacity(0.4), lineWidth: 2)
+                                }
+                                .shadow(
+                                    color: unlocked ? achievement.rarity.glowColor : .clear,
+                                    radius: unlocked ? 16 : 0
                                 )
-                                .offset(x: 38, y: 38)
+
+                            Image(systemName: achievement.symbolName)
+                                .font(.system(size: 48))
+                                .foregroundStyle(palette.accent)
+
+                            if unlocked && isLockScreenSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 28))
+                                    .symbolRenderingMode(.palette)
+                                    .foregroundStyle(.white, palette.headerAccent)
+                                    .offset(x: 44, y: -44)
+                                    .accessibilityHidden(true)
+                            }
+
+                            if !unlocked {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(palette.secondaryText.opacity(0.7))
+                                    .padding(5)
+                                    .background(
+                                        Circle()
+                                            .fill(palette.card)
+                                            .shadow(color: palette.shadow, radius: 2, y: 1)
+                                    )
+                                    .offset(x: 38, y: 38)
+                            }
                         }
-                    }
 
-                    Text(achievement.name)
-                        .font(.system(.title2, design: .serif, weight: .semibold))
-                        .foregroundStyle(palette.primaryText)
-                        .padding(.top, 20)
+                        Text(achievement.name)
+                            .font(.system(.title2, design: .serif, weight: .semibold))
+                            .foregroundStyle(palette.primaryText)
+                            .padding(.top, 20)
 
-                    Text(achievement.badgeDescription)
-                        .font(.body)
-                        .foregroundStyle(palette.secondaryText)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 6)
+                        Text(achievement.badgeDescription)
+                            .font(.body)
+                            .foregroundStyle(palette.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 6)
+                            .padding(.horizontal, 32)
+
+                        Divider()
+                            .overlay(palette.border.opacity(0.7))
+                            .padding(.vertical, 24)
+                            .padding(.horizontal, 40)
+
+                        VStack(spacing: 14) {
+                            badgeInfoRow(label: "Type", value: badgeTypeLabel)
+                            badgeInfoRow(label: "Rarity", value: achievement.rarity.rawValue.capitalized)
+                            badgeInfoRow(label: "Requirement", value: requirementLabel)
+                            badgeInfoRow(label: "Status", value: unlocked ? "Earned" : "Locked")
+                        }
                         .padding(.horizontal, 32)
 
-                    Divider()
-                        .overlay(palette.border.opacity(0.7))
-                        .padding(.vertical, 24)
-                        .padding(.horizontal, 40)
-
-                    VStack(spacing: 14) {
-                        badgeInfoRow(label: "Type", value: badgeTypeLabel)
-                        badgeInfoRow(label: "Rarity", value: achievement.rarity.rawValue.capitalized)
-                        badgeInfoRow(label: "Requirement", value: requirementLabel)
-                        badgeInfoRow(label: "Status", value: unlocked ? "Earned" : "Locked")
-                    }
-                    .padding(.horizontal, 32)
-
-                    if unlocked {
-                        lockScreenWidgetSection
-                            .padding(.horizontal, 28)
-                            .padding(.top, 24)
-                    }
-
-                    if unlocked {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(palette.accent)
-                            Text("You earned this badge!")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(palette.accent)
+                        if unlocked {
+                            lockScreenWidgetSection
+                                .padding(.horizontal, 28)
+                                .padding(.top, 24)
                         }
-                        .padding(.top, 24)
-                    } else {
-                        Text("Keep going to unlock this badge")
-                            .font(.subheadline)
-                            .foregroundStyle(palette.secondaryText)
+
+                        if unlocked {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .foregroundStyle(palette.accent)
+                                Text("You earned this badge!")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(palette.accent)
+                            }
                             .padding(.top, 24)
+                        } else {
+                            Text("Keep going to unlock this badge")
+                                .font(.subheadline)
+                                .foregroundStyle(palette.secondaryText)
+                                .padding(.top, 24)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 32)
-                .padding(.bottom, 28)
+                .scrollContentBackground(.hidden)
             }
-            .background(palette.canvas.ignoresSafeArea())
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                        .foregroundStyle(palette.accent)
-                }
+        }
+        .compositingGroup()
+    }
+
+    private var badgeDetailHeader: some View {
+        HStack(alignment: .center) {
+            Button {
+                dismiss()
+            } label: {
+                Text("Close")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(palette.accent)
+                    .fixedSize(horizontal: true, vertical: false)
             }
-            .toolbarBackground(palette.card.opacity(0.92), for: .navigationBar)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close")
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(palette.canvas)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(palette.border.opacity(0.55))
+                .frame(height: 1)
         }
     }
 

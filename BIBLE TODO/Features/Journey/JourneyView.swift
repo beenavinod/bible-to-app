@@ -48,6 +48,8 @@ struct JourneyView: View {
             ShareDrawerSheet(payload: payload, palette: appState.palette)
                 .presentationDetents([.height(520), .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(appState.palette.canvas)
+                .presentationBackgroundInteraction(.disabled)
         }
         .sheet(item: $selectedBadge) { badge in
             BadgeDetailSheet(
@@ -58,8 +60,10 @@ struct JourneyView: View {
                 onSelectForLockScreen: { viewModel.setLockScreenWidgetBadgeId(badge.id) },
                 onClearLockScreenSelection: { viewModel.setLockScreenWidgetBadgeId(nil) }
             )
-            .presentationDetents([.height(640), .large])
-            .presentationDragIndicator(.visible)
+                .presentationDetents([.height(640), .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(appState.palette.canvas)
+                .presentationBackgroundInteraction(.disabled)
         }
     }
 
