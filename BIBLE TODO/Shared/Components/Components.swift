@@ -24,18 +24,28 @@ struct HomeWallpaperBackgroundView: View {
     let wallpaper: HomeWallpaper
 
     var body: some View {
-        Group {
-            if let gradient = wallpaper.homeLinearGradient {
-                gradient
-            } else {
-                wallpaper.solidBackgroundColor
+        GeometryReader { geo in
+            Group {
+                if let assetName = wallpaper.imageAssetName {
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .overlay(Color.black.opacity(0.18))
+                } else if let gradient = wallpaper.homeLinearGradient {
+                    gradient
+                } else {
+                    wallpaper.solidBackgroundColor
+                }
             }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
         }
         .ignoresSafeArea()
     }
 }
 
-/// Circular press-and-hold control for the Home “today’s task” card (incomplete / in progress / done).
+/// Circular press-and-hold control for the Home task card.
+/// Uses a frosted glass disc with a progress ring, matching the liquid glass card style.
 struct HomePressHoldCircleView: View {
     let progress: Double
     let isCompleted: Bool
@@ -48,8 +58,8 @@ struct HomePressHoldCircleView: View {
     let onPress: () -> Void
     let onRelease: () -> Void
 
-    private let diameter: CGFloat = 108
-    private let ringWidth: CGFloat = 4
+    private let diameter: CGFloat = 100
+    private let ringWidth: CGFloat = 3.5
 
     private var inProgress: Bool {
         isInteractive && !isCompleted && progress > 0 && progress < 1
@@ -66,32 +76,41 @@ struct HomePressHoldCircleView: View {
                 onRelease()
             }
 
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             ZStack {
                 if isCompleted {
                     Circle()
-                        .fill(Color(red: 0.55, green: 0.68, blue: 0.58))
-                        .frame(width: diameter, height: diameter)
-                        .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3)
-
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 34, weight: .bold))
-                        .foregroundStyle(.white)
-                } else if inProgress {
-                    Circle()
                         .fill(
-                            RadialGradient(
+                            LinearGradient(
                                 colors: [
-                                    Color(red: 0.99, green: 0.99, blue: 0.98),
-                                    accentSoft.opacity(0.55),
+                                    Color(red: 0.48, green: 0.72, blue: 0.54),
+                                    Color(red: 0.40, green: 0.62, blue: 0.48),
                                 ],
-                                center: .center,
-                                startRadius: 4,
-                                endRadius: diameter * 0.55
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
                         )
                         .frame(width: diameter, height: diameter)
-                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.45), Color.white.opacity(0.1)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(color: Color(red: 0.40, green: 0.62, blue: 0.48).opacity(0.35), radius: 12, x: 0, y: 4)
+
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                } else if inProgress {
+                    glassDisc
+                        .shadow(color: accent.opacity(0.2), radius: 10, x: 0, y: 2)
 
                     Circle()
                         .trim(from: 0, to: progress)
@@ -100,35 +119,52 @@ struct HomePressHoldCircleView: View {
                         .frame(width: diameter - ringWidth, height: diameter - ringWidth)
 
                     Image(systemName: "hand.tap.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(primaryText.opacity(0.85))
+                        .font(.system(size: 26, weight: .medium))
+                        .foregroundStyle(primaryText.opacity(0.80))
                 } else {
-                    Circle()
-                        .fill(accentSoft.opacity(0.35))
-                        .frame(width: diameter, height: diameter)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.black.opacity(0.12), lineWidth: 1)
-                        )
-                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
+                    glassDisc
 
                     Image(systemName: "hand.tap.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(primaryText.opacity(0.85))
+                        .font(.system(size: 26, weight: .medium))
+                        .foregroundStyle(primaryText.opacity(0.65))
                 }
             }
             .contentShape(Circle())
             .gesture(gesture)
+            .animation(.spring(response: 0.35, dampingFraction: 0.72), value: isCompleted)
 
-            Text(isCompleted ? "Completed" : "Press and hold to complete")
-                .font(.caption.weight(.medium))
+            Text(isCompleted ? "Completed" : "Press & hold")
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(isCompleted ? primaryText : secondaryText)
                 .multilineTextAlignment(.center)
                 .frame(width: diameter + 8)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isCompleted ? "Completed" : "Press and hold to complete today’s task")
+        .accessibilityLabel(isCompleted ? "Completed" : "Press and hold to complete today's task")
+    }
+
+    private var glassDisc: some View {
+        Circle()
+            .fill(accentSoft.opacity(0.18))
+            .frame(width: diameter, height: diameter)
+            .background(
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: diameter, height: diameter)
+            )
+            .overlay(
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.45), Color.white.opacity(0.08)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -154,9 +190,7 @@ struct TopBar: View {
     let subtitle: String?
     let palette: AppThemePalette
     var showsBackButton = false
-    /// Opens the Home background picker (Home tab).
     var onHomeBackgroundTap: (() -> Void)? = nil
-    /// When set, shows a tappable share control that opens your share flow.
     var onShareTap: (() -> Void)? = nil
 
     var body: some View {
