@@ -17,6 +17,8 @@ final class JourneyViewModel: ObservableObject {
     private let service: BibleService
     private let persistence: AppPersistence
     private var didLoadOnce = false
+    /// Server-backed definitions (positive ids). Used for the lock-screen widget so we do not depend on the fallback catalog’s negative test ids.
+    private var serverBadgeDefinitions: [Achievement] = []
 
     init(service: BibleService, persistence: AppPersistence) {
         self.service = service
@@ -59,8 +61,7 @@ final class JourneyViewModel: ObservableObject {
 
     private func reconcileLockScreenBadgeSelection() {
         guard let id = lockScreenWidgetBadgeId else { return }
-        let stillValid = earnedBadgeIds.contains(id) && achievements.contains(where: { $0.id == id })
-        guard stillValid else {
+        guard earnedBadgeIds.contains(id) else {
             persistence.setLockScreenWidgetBadgeId(nil)
             lockScreenWidgetBadgeId = nil
             return
@@ -75,9 +76,16 @@ final class JourneyViewModel: ObservableObject {
             async let earned = service.fetchUserEarnedBadgeIds()
             let loadedRecords = try await history
             summary = try await streak
-            let fetched = (try? await badges) ?? []
-            achievements = fetched.isEmpty ? BadgeIcons.fallbackCatalog : fetched
+            var fetched = (try? await badges) ?? []
             earnedBadgeIds = (try? await earned) ?? []
+            if let wid = lockScreenWidgetBadgeId,
+               earnedBadgeIds.contains(wid),
+               !fetched.contains(where: { $0.id == wid }),
+               let recovered = try? await service.fetchBadgeDefinition(id: wid) {
+                fetched.append(recovered)
+            }
+            serverBadgeDefinitions = fetched
+            achievements = fetched.isEmpty ? BadgeIcons.fallbackCatalog : fetched
             records = loadedRecords.map(applyCompletionState)
             recalculateSummary()
             reconcileLockScreenBadgeSelection()
@@ -86,6 +94,7 @@ final class JourneyViewModel: ObservableObject {
             if records.isEmpty {
                 records = []
                 achievements = BadgeIcons.fallbackCatalog
+                serverBadgeDefinitions = []
             }
         }
     }
@@ -186,7 +195,8 @@ final class JourneyViewModel: ObservableObject {
         let entries: [SharedBadgeEntry]
         if let id = lockScreenWidgetBadgeId,
            earnedBadgeIds.contains(id),
-           let badge = achievements.first(where: { $0.id == id }) {
+           let badge = serverBadgeDefinitions.first(where: { $0.id == id })
+               ?? achievements.first(where: { $0.id == id }) {
             entries = [
                 SharedBadgeEntry(
                     symbolName: badge.symbolName,

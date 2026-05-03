@@ -39,6 +39,9 @@ struct ContentView: View {
                 }
             }
         }
+        .task {
+            subscription.configure(appState: appState)
+        }
     }
 
     private var paywallBinding: Binding<Bool> {

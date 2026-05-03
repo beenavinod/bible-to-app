@@ -79,6 +79,7 @@ final class SubscriptionManager: NSObject, ObservableObject, PurchasesDelegate {
 
     func configure(appState: AppState) {
         self.appState = appState
+        appState.subscriptionManagerForWidgets = self
         if usesRevenueCat {
             Purchases.shared.delegate = self
             revenueCatIdentityObserver = NotificationCenter.default

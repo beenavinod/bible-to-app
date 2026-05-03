@@ -140,6 +140,7 @@ struct JourneyView: View {
                             AchievementBadgeView(
                                 achievement: achievement,
                                 unlocked: viewModel.isBadgeEarned(achievement),
+                                isLockScreenSelected: viewModel.lockScreenWidgetBadgeId == achievement.id,
                                 palette: appState.palette
                             )
                         }

@@ -433,6 +433,18 @@ final class BibleTodoRepository: Sendable {
             .value
     }
 
+    func fetchBadgeDefinition(id: Int) async throws -> BadgeDefinitionRow? {
+        let rows: [BadgeDefinitionRow] = try await client
+            .from("badge_definitions")
+            .select()
+            .eq("id", value: id)
+            .eq("is_active", value: true)
+            .limit(1)
+            .execute()
+            .value
+        return rows.first
+    }
+
     func fetchUserEarnedBadgeIds(userId: UUID) async throws -> Set<Int> {
         let rows: [UserBadgeRow] = try await client
             .from("user_badges")

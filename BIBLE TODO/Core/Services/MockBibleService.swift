@@ -39,6 +39,10 @@ final class MockBibleService: BibleService {
         []
     }
 
+    func fetchBadgeDefinition(id: Int) async throws -> Achievement? {
+        BadgeIcons.fallbackCatalog.first(where: { $0.id == id })
+    }
+
     func awardBadge(badgeDefinitionId: Int) async throws {}
 
     func syncTaskCompletion(userTaskId: UUID, assignedDateISO: String, completed: Bool) async throws {

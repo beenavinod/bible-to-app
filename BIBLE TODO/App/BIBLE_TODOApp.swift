@@ -13,9 +13,6 @@ struct BIBLE_TODOApp: App {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(subscriptionManager)
-                .onAppear {
-                    subscriptionManager.configure(appState: appState)
-                }
         }
     }
 }

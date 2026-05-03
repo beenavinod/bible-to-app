@@ -367,6 +367,8 @@ struct WeekProgressView: View {
 struct AchievementBadgeView: View {
     let achievement: Achievement
     let unlocked: Bool
+    /// When `true` and `unlocked`, shows Lock Screen selection (checkmark only).
+    var isLockScreenSelected: Bool = false
     let palette: AppThemePalette
 
     private var subtitle: String {
@@ -388,6 +390,10 @@ struct AchievementBadgeView: View {
         .frame(maxWidth: .infinity, alignment: .top)
     }
 
+    private var lockScreenSelectionActive: Bool {
+        unlocked && isLockScreenSelected
+    }
+
     private var badgeIcon: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
             .fill(palette.accent.opacity(0.15))
@@ -405,6 +411,21 @@ struct AchievementBadgeView: View {
                         color: unlocked ? achievement.rarity.glowColor : .clear,
                         radius: unlocked ? 10 : 0
                     )
+            }
+            .overlay(alignment: .topTrailing) {
+                if lockScreenSelectionActive {
+                    ZStack {
+                        Circle()
+                            .fill(palette.headerAccent)
+                            .frame(width: 26, height: 26)
+                            .shadow(color: palette.shadow.opacity(0.35), radius: 2, y: 1)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundStyle(.white)
+                    }
+                    .offset(x: 6, y: -6)
+                    .accessibilityLabel("Selected for Lock Screen widget")
+                }
             }
             .overlay(alignment: .bottomTrailing) {
                 if !unlocked {
@@ -467,6 +488,15 @@ struct BadgeDetailSheet: View {
                         Image(systemName: achievement.symbolName)
                             .font(.system(size: 48))
                             .foregroundStyle(palette.accent)
+
+                        if unlocked && isLockScreenSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 28))
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(.white, palette.headerAccent)
+                                .offset(x: 44, y: -44)
+                                .accessibilityHidden(true)
+                        }
 
                         if !unlocked {
                             Image(systemName: "lock.fill")

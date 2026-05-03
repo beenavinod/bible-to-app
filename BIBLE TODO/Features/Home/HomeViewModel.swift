@@ -17,6 +17,7 @@ final class HomeViewModel: ObservableObject {
 
     private let service: BibleService
     private let persistence: AppPersistence
+    private let isPremiumUnlockedForWidgets: @MainActor () -> Bool
     private let onJourneyDataShouldRefresh: (() async -> Void)?
     private var historyCache: [DailyRecord] = []
     private var recordsByDay: [Date: DailyRecord] = [:]
@@ -24,9 +25,15 @@ final class HomeViewModel: ObservableObject {
     private var completionTask: Task<Void, Never>?
     private var didLoadOnce = false
 
-    init(service: BibleService, persistence: AppPersistence, onJourneyDataShouldRefresh: (() async -> Void)? = nil) {
+    init(
+        service: BibleService,
+        persistence: AppPersistence,
+        isPremiumUnlockedForWidgets: @escaping @MainActor () -> Bool = { WidgetDataStore.readPremiumUnlocked() },
+        onJourneyDataShouldRefresh: (() async -> Void)? = nil
+    ) {
         self.service = service
         self.persistence = persistence
+        self.isPremiumUnlockedForWidgets = isPremiumUnlockedForWidgets
         self.onJourneyDataShouldRefresh = onJourneyDataShouldRefresh
     }
 
@@ -204,7 +211,7 @@ final class HomeViewModel: ObservableObject {
 
     private func syncVerseTaskWidget(verse: Verse) {
         let dateISO = BibleTodoDate.formatLocalDay(verse.date)
-        let showTask = WidgetDataStore.readPremiumUnlocked()
+        let showTask = isPremiumUnlockedForWidgets()
         WidgetDataStore.writeVerseTask(SharedVerseTaskData(
             verseText: verse.text,
             reference: verse.reference,
@@ -216,7 +223,7 @@ final class HomeViewModel: ObservableObject {
         WidgetCenter.shared.reloadTimelines(ofKind: "VerseTaskWidget")
     }
 
-    /// Re-writes widget payload when premium status changes (task text depends on `readPremiumUnlocked()`).
+    /// Re-writes widget payload when premium status changes (task text depends on subscription + App Group mirror).
     func resyncVerseWidgetForCurrentVerse() {
         guard let verse = displayedRecord?.verse else { return }
         syncVerseTaskWidget(verse: verse)

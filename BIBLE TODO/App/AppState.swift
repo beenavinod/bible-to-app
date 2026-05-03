@@ -41,6 +41,9 @@ final class AppState: ObservableObject {
 
     private(set) var sessionUserId: UUID?
 
+    /// Set from `SubscriptionManager.configure` so home can mirror premium into widget payloads without racing `WidgetDataStore.writePremiumUnlocked`.
+    weak var subscriptionManagerForWidgets: SubscriptionManager?
+
     private let persistence: AppPersistence
 
     /// `true` when URL and anon key produced a `SupabaseClient`.
@@ -87,7 +90,13 @@ final class AppState: ObservableObject {
         hasCompletedOnboarding = true
         preferredName = persistence.preferredName()
         rootPhase = .main
-        mainTabViewModels = TabViewModelsContainer(service: service, persistence: persistence)
+        mainTabViewModels = TabViewModelsContainer(
+            service: service,
+            persistence: persistence,
+            isPremiumUnlockedForWidgets: { [weak self] in
+                self?.subscriptionManagerForWidgets?.isPremium ?? WidgetDataStore.readPremiumUnlocked()
+            }
+        )
     }
 
     var palette: AppThemePalette {
@@ -174,7 +183,13 @@ final class AppState: ObservableObject {
     }
 
     private func rebuildMainTabViewModels() {
-        mainTabViewModels = TabViewModelsContainer(service: service, persistence: persistence)
+        mainTabViewModels = TabViewModelsContainer(
+            service: service,
+            persistence: persistence,
+            isPremiumUnlockedForWidgets: { [weak self] in
+                self?.subscriptionManagerForWidgets?.isPremium ?? WidgetDataStore.readPremiumUnlocked()
+            }
+        )
     }
 
     /// Warms today’s verse (and history) before showing the main shell so the first frame is not empty.

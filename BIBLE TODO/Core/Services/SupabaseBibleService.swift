@@ -69,6 +69,11 @@ final class SupabaseBibleService: BibleService {
         try await repository.fetchUserEarnedBadgeIds(userId: userId)
     }
 
+    func fetchBadgeDefinition(id: Int) async throws -> Achievement? {
+        guard let row = try await repository.fetchBadgeDefinition(id: id) else { return nil }
+        return row.toAchievement()
+    }
+
     func awardBadge(badgeDefinitionId: Int) async throws {
         try await repository.awardBadge(userId: userId, badgeDefinitionId: badgeDefinitionId)
     }
