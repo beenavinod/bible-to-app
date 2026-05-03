@@ -120,7 +120,7 @@ struct StreakWidgetEntryView: View {
                 if family == .systemLarge {
                     WidgetPalette.canvasBackground
                 } else {
-                    WidgetPalette.canvasSolid
+                    mediumWidgetBackground
                 }
             }
     }
@@ -142,24 +142,37 @@ struct StreakWidgetEntryView: View {
         }
     }
 
+    /// Fills the medium widget; image art keeps Jesus on the trailing side — align fill to `.trailing` so crop favors the left safe area.
+    private var mediumWidgetBackground: some View {
+        GeometryReader { geo in
+            Image("StreakMediumBackground")
+                .resizable()
+                .scaledToFill()
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .trailing)
+                .clipped()
+        }
+    }
+
+    /// Streak UI sits in the left ~62% so it stays over the empty cream area, not the figure.
     private var mediumWidget: some View {
-        HStack(alignment: .center, spacing: 4) {
-            VStack(alignment: .leading, spacing: 0) {
-                streakHeaderMedium
-                    .padding(.bottom, 10)
+        GeometryReader { geo in
+            let contentMaxWidth = geo.size.width * 0.62
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
+                    streakHeaderMedium
+                        .padding(.bottom, 10)
 
-                streakDivider
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 12)
+                    streakDivider
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 12)
 
-                weekDotsRow(days: entry.week, circleSize: 28, textSize: 11, spacing: 5, shareStyleIncomplete: false)
+                    weekDotsRow(days: entry.week, circleSize: 28, textSize: 11, spacing: 5, shareStyleIncomplete: false)
+                }
+                .frame(maxWidth: contentMaxWidth, alignment: .leading)
+
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            streakHeroImage
-                .frame(maxWidth: 120, maxHeight: .infinity)
-                .padding(.trailing, -6)
-                .padding(.vertical, -4)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
     }
 
@@ -322,14 +335,6 @@ struct StreakWidgetEntryView: View {
         .frame(height: 1)
     }
 
-    private var streakHeroImage: some View {
-        Image("StreakHero")
-            .resizable()
-            .scaledToFit()
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .accessibilityHidden(true)
-    }
-
     private func weekDotsRow(
         days: [WeekdayStatus],
         circleSize: CGFloat,
@@ -403,14 +408,12 @@ struct StreakWidget: Widget {
             StreakWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Bible Streak")
-        .description("Medium: streak and five rolling days. Large: full streak story with week, stats, and hero.")
+        .description("Medium: streak on a gentle background art. Large: full streak story with week and stats.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }
 
 private enum WidgetPalette {
-    /// Medium widget: unchanged flat canvas.
-    static let canvasSolid = Color(red: 0.98, green: 0.97, blue: 0.94)
     static let canvasTop = Color(red: 0.98, green: 0.97, blue: 0.94)
     static let canvasBottom = Color(red: 0.94, green: 0.96, blue: 0.91)
     static let canvasBackground = LinearGradient(
