@@ -34,7 +34,8 @@ struct Provider: TimelineProvider {
                     taskTitle: data.taskTitle,
                     taskDescription: data.taskDescription,
                     symbolName: data.symbolName,
-                    isLocked: true
+                    isLocked: true,
+                    isTaskCompleted: data.taskCompleted ?? false
                 )
             }
             return .locked
@@ -48,7 +49,8 @@ struct Provider: TimelineProvider {
             taskTitle: data.taskTitle,
             taskDescription: data.taskDescription,
             symbolName: data.symbolName,
-            isLocked: false
+            isLocked: false,
+            isTaskCompleted: data.taskCompleted ?? false
         )
     }
 }
@@ -61,6 +63,7 @@ struct VerseTaskEntry: TimelineEntry {
     let taskDescription: String
     let symbolName: String
     var isLocked: Bool = false
+    let isTaskCompleted: Bool
 
     static let placeholder = VerseTaskEntry(
         date: .now,
@@ -68,7 +71,18 @@ struct VerseTaskEntry: TimelineEntry {
         reference: "1 Corinthians 16:14",
         taskTitle: "Encourage Someone",
         taskDescription: "Send one meaningful message filled with hope.",
-        symbolName: "message.badge.fill"
+        symbolName: "message.badge.fill",
+        isTaskCompleted: false
+    )
+
+    static let placeholderTaskDone = VerseTaskEntry(
+        date: .now,
+        verseText: "Let all that you do be done in love.",
+        reference: "1 Corinthians 16:14",
+        taskTitle: "Encourage Someone",
+        taskDescription: "Send one meaningful message filled with hope.",
+        symbolName: "message.badge.fill",
+        isTaskCompleted: true
     )
 
     static let locked = VerseTaskEntry(
@@ -78,7 +92,8 @@ struct VerseTaskEntry: TimelineEntry {
         taskTitle: "Encourage Someone",
         taskDescription: "Send one meaningful message filled with hope.",
         symbolName: "message.badge.fill",
-        isLocked: true
+        isLocked: true,
+        isTaskCompleted: false
     )
 }
 
@@ -88,7 +103,7 @@ struct VerseTaskWidgetEntryView: View {
 
     var body: some View {
         content
-            .padding(family == .systemSmall ? 6 : 8)
+            .padding(family == .systemSmall ? 4 : 8)
             .containerBackground(for: .widget) {
                 LinearGradient(
                     colors: [WidgetPalette.canvasTop, WidgetPalette.canvasBottom],
@@ -150,106 +165,73 @@ struct VerseTaskWidgetEntryView: View {
     }
 
     private var smallWidget: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("\"\(entry.verseText)\"")
-                .font(.system(size: 14, weight: .medium, design: .serif))
+        VStack(alignment: .center, spacing: 3) {
+            Text(entry.verseText)
+                .font(.system(size: 11, weight: .medium, design: .serif))
                 .foregroundStyle(WidgetPalette.primaryText)
-                .lineSpacing(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Spacer(minLength: 4)
+                .lineSpacing(2)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .minimumScaleFactor(0.5)
 
             Text(entry.reference)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(WidgetPalette.accentDark)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
                 .lineLimit(2)
-                .minimumScaleFactor(0.85)
+                .minimumScaleFactor(0.72)
         }
     }
 
     private var mediumWidget: some View {
         Group {
             if entry.taskTitle.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("\"\(entry.verseText)\"")
-                        .font(.system(size: 17, weight: .medium, design: .serif))
-                        .foregroundStyle(WidgetPalette.primaryText)
-                        .lineSpacing(4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Text(entry.reference)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(WidgetPalette.accentDark)
-                        .lineLimit(3)
-                        .minimumScaleFactor(0.85)
-
-                    Spacer(minLength: 4)
-
-                    Text("Open Bible Life to unlock today’s task with Premium.")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(WidgetPalette.secondaryText)
-                        .lineLimit(3)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                Text("Open Bible Life to unlock today’s task with Premium.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(WidgetPalette.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .minimumScaleFactor(0.85)
+                    .padding(.horizontal, 4)
             } else {
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("\"\(entry.verseText)\"")
-                            .font(.system(size: 16, weight: .medium, design: .serif))
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(entry.taskTitle)
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
                             .foregroundStyle(WidgetPalette.primaryText)
-                            .lineSpacing(4)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .multilineTextAlignment(.leading)
+                            .minimumScaleFactor(0.82)
+                            .lineLimit(4)
 
-                        Text(entry.reference)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(WidgetPalette.accentDark)
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.85)
+                        if !entry.taskDescription.isEmpty {
+                            Text(entry.taskDescription)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(WidgetPalette.secondaryText)
+                                .lineSpacing(2)
+                                .multilineTextAlignment(.leading)
+                                .minimumScaleFactor(0.8)
+                                .lineLimit(6)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(.white.opacity(0.42))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(WidgetPalette.border.opacity(0.8), lineWidth: 1)
-                        )
-                        .overlay {
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack(alignment: .center, spacing: 10) {
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(WidgetPalette.cardAccent)
-                                        .frame(width: 34, height: 34)
-                                        .overlay {
-                                            Image(systemName: entry.symbolName)
-                                                .font(.system(size: 15, weight: .semibold))
-                                                .foregroundStyle(WidgetPalette.accentDark)
-                                        }
-
-                                    Text("TODAY'S TASK")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(WidgetPalette.secondaryText)
-                                }
-
-                                Text(entry.taskTitle)
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(WidgetPalette.primaryText)
-                                    .lineLimit(2)
-
-                                Text(entry.taskDescription)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(WidgetPalette.secondaryText)
-                                    .lineSpacing(2)
-                                    .lineLimit(4)
-
-                                Spacer(minLength: 0)
-                            }
-                            .padding(14)
-                        }
-                        .frame(width: 126)
+                    mediumTaskCompletionIcon
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
         }
+    }
+
+    private var mediumTaskCompletionIcon: some View {
+        Image(systemName: entry.isTaskCompleted ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 34, weight: entry.isTaskCompleted ? .semibold : .regular))
+            .foregroundStyle(
+                entry.isTaskCompleted
+                    ? WidgetPalette.accentDark
+                    : WidgetPalette.secondaryText.opacity(0.55)
+            )
+            .accessibilityLabel(entry.isTaskCompleted ? "Task completed" : "Task not completed")
     }
 }
 
@@ -261,7 +243,7 @@ struct VerseTaskWidget: Widget {
             VerseTaskWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Verse And Task")
-        .description("Shows today's Bible verse and a simple action for the day.")
+        .description("Small: today’s verse. Medium: today’s task and completion.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
@@ -269,7 +251,6 @@ struct VerseTaskWidget: Widget {
 private enum WidgetPalette {
     static let canvasTop = Color(red: 0.97, green: 0.95, blue: 0.90)
     static let canvasBottom = Color(red: 0.92, green: 0.95, blue: 0.89)
-    static let cardAccent = Color(red: 0.90, green: 0.94, blue: 0.86)
     static let primaryText = Color(red: 0.31, green: 0.27, blue: 0.22)
     static let secondaryText = Color(red: 0.47, green: 0.44, blue: 0.38)
     static let accentDark = Color(red: 0.45, green: 0.55, blue: 0.40)
@@ -298,4 +279,10 @@ private enum WidgetPalette {
     VerseTaskWidget()
 } timeline: {
     VerseTaskEntry.locked
+}
+
+#Preview("Medium task done", as: .systemMedium) {
+    VerseTaskWidget()
+} timeline: {
+    VerseTaskEntry.placeholderTaskDone
 }

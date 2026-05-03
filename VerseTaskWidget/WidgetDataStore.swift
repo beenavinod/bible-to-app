@@ -14,6 +14,8 @@ struct SharedVerseTaskData: Codable {
     let symbolName: String
     /// ISO 8601 date string (yyyy-MM-dd) for staleness checks.
     let dateISO: String
+    /// Whether today’s task is done (medium widget status). Omitted in older payloads → treated as false.
+    var taskCompleted: Bool? = nil
 }
 
 /// Week-day completion status for the streak widget.

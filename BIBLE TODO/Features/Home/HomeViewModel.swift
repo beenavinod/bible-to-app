@@ -56,7 +56,12 @@ final class HomeViewModel: ObservableObject {
             focusedDayIndex = min(focusedDayIndex, max(0, orderedDayStarts.count - 1))
             applyDisplayedRecord()
             updateNavigationFlags()
-            syncVerseTaskWidget(verse: today.verse)
+            let todayKey = Calendar.current.startOfDay(for: today.verse.date)
+            if let record = recordsByDay[todayKey] {
+                syncVerseTaskWidget(record: record)
+            } else {
+                syncVerseTaskWidget(record: applyCompletionState(to: today))
+            }
             didLoadOnce = true
             isLoadingInitialContent = false
         } catch is CancellationError {
@@ -195,6 +200,7 @@ final class HomeViewModel: ObservableObject {
             )
             await onJourneyDataShouldRefresh?()
         }
+        syncVerseTaskWidget(record: completedRecord)
         WidgetCenter.shared.reloadTimelines(ofKind: "VerseTaskWidget")
     }
 
@@ -209,7 +215,8 @@ final class HomeViewModel: ObservableObject {
         return DailyRecord(id: record.id, verse: record.verse, completed: isCompleted)
     }
 
-    private func syncVerseTaskWidget(verse: Verse) {
+    private func syncVerseTaskWidget(record: DailyRecord) {
+        let verse = record.verse
         let dateISO = BibleTodoDate.formatLocalDay(verse.date)
         let showTask = isPremiumUnlockedForWidgets()
         WidgetDataStore.writeVerseTask(SharedVerseTaskData(
@@ -218,15 +225,16 @@ final class HomeViewModel: ObservableObject {
             taskTitle: showTask ? verse.taskTitle : "",
             taskDescription: showTask ? verse.taskDescription : "",
             symbolName: verse.symbolName,
-            dateISO: dateISO
+            dateISO: dateISO,
+            taskCompleted: record.completed
         ))
         WidgetCenter.shared.reloadTimelines(ofKind: "VerseTaskWidget")
     }
 
     /// Re-writes widget payload when premium status changes (task text depends on subscription + App Group mirror).
     func resyncVerseWidgetForCurrentVerse() {
-        guard let verse = displayedRecord?.verse else { return }
-        syncVerseTaskWidget(verse: verse)
+        guard let record = displayedRecord else { return }
+        syncVerseTaskWidget(record: record)
     }
 }
 

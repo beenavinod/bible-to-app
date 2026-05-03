@@ -358,23 +358,44 @@ private struct GuideVerseTaskWidgetCard: View {
     var compact: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 4 : 6) {
-            Text("Daily Verse")
-                .font(compact ? .caption2.weight(.semibold) : .caption.weight(.semibold))
-                .foregroundStyle(palette.secondaryText)
-            Text("1 Cor 16:14")
-                .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
-                .foregroundStyle(palette.primaryText)
-                .lineLimit(1)
-            if !compact {
-                Divider().overlay(palette.border.opacity(0.6))
-                Label("Encourage Someone", systemImage: "message.badge.fill")
-                    .font(.caption2)
-                    .foregroundStyle(palette.accent)
+        Group {
+            if compact {
+                VStack(alignment: .center, spacing: 3) {
+                    Text("Let all that you do be done in love.")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(palette.primaryText)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.75)
+                    Text("1 Cor 16:14")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(palette.accent)
+                        .multilineTextAlignment(.center)
+                }
+            } else {
+                HStack(alignment: .center, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Encourage Someone")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(palette.primaryText)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
+                        Text("Send one meaningful message filled with hope.")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(palette.secondaryText)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.85)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Image(systemName: "circle")
+                        .font(.system(size: 26, weight: .regular))
+                        .foregroundStyle(palette.secondaryText.opacity(0.55))
+                }
             }
         }
         .padding(compact ? 8 : 11)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: compact ? .center : .leading)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
