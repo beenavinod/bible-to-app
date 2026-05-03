@@ -2,12 +2,16 @@ import Photos
 import SwiftUI
 import UIKit
 
-// MARK: - Export (square: fits phone preview + works for Instagram / feeds)
+// MARK: - Export (9:16 — Instagram Stories / WhatsApp status, 1080×1920)
 
 private enum ShareExportLayout {
-    static let side: CGFloat = 1080
-    static let previewMaxHeight: CGFloat = 280
-    static let horizontalPadding: CGFloat = 48
+    static let width: CGFloat = 1080
+    static let height: CGFloat = 1920
+    static var aspectRatio: CGFloat { width / height }
+    /// ~390pt reference iPhone width: verse/task match on-screen home proportions at export width.
+    static let storyTypographyScale: CGFloat = width / 390
+    static let previewMaxHeight: CGFloat = 360
+    static let horizontalPadding: CGFloat = 56
 }
 
 // MARK: - Payload
@@ -50,9 +54,9 @@ private struct ShareThemedCanvas: View {
                 .fill(palette.tabInactive.opacity(0.25))
                 .frame(width: 360, height: 360)
                 .blur(radius: 45)
-                .offset(x: -280, y: 340)
+                .offset(x: -280, y: ShareExportLayout.height * 0.36)
         }
-        .frame(width: ShareExportLayout.side, height: ShareExportLayout.side)
+        .frame(width: ShareExportLayout.width, height: ShareExportLayout.height)
         .clipped()
     }
 }
@@ -65,13 +69,12 @@ struct ShareableVerseCardLayout: View {
     /// When `false`, export verse-only (no task card) for free-tier users.
     var showsTaskCard: Bool = true
 
-    private let side = ShareExportLayout.side
+    private let w = ShareExportLayout.width
+    private let h = ShareExportLayout.height
     private var fg: HomeForegroundStyle { wallpaper.homeForeground }
+    private var typeScale: CGFloat { ShareExportLayout.storyTypographyScale }
 
     var body: some View {
-        let verseScale: CGFloat = 1.55
-        let taskScale: CGFloat = 1.42
-
         ZStack {
             Group {
                 if let assetName = wallpaper.imageAssetName {
@@ -85,51 +88,55 @@ struct ShareableVerseCardLayout: View {
                     wallpaper.solidBackgroundColor
                 }
             }
-            .frame(width: side, height: side)
+            .frame(width: w, height: h)
             .clipped()
 
             VStack(spacing: 0) {
-                Spacer(minLength: 48)
+                Spacer(minLength: 120)
 
-                HomeDayVerseSection(record: record, fg: fg, fontScale: verseScale)
-                    .padding(.horizontal, 44)
+                HomeDayVerseSection(record: record, fg: fg, fontScale: typeScale)
+                    .padding(.horizontal, ShareExportLayout.horizontalPadding)
 
                 if showsTaskCard {
-                    Spacer(minLength: 32)
+                    Spacer(minLength: 56)
 
-                    HomeDayTaskCardTextOnly(record: record, fg: fg, fontScale: taskScale, isViewingToday: true)
-                        .padding(.horizontal, 48)
+                    HomeDayTaskCardTextOnly(record: record, fg: fg, fontScale: typeScale, isViewingToday: true)
+                        .padding(.horizontal, ShareExportLayout.horizontalPadding)
                 } else {
-                    Spacer(minLength: 24)
+                    Spacer(minLength: 48)
                 }
 
-                Spacer(minLength: 28)
+                Spacer(minLength: 72)
 
-                ShareVerseWatermark(fg: fg)
-                    .padding(.bottom, 40)
+                ShareVerseWatermark(fg: fg, scale: min(typeScale / 2.35, 1.28))
+                    .padding(.bottom, 100)
             }
         }
-        .frame(width: side, height: side)
+        .frame(width: w, height: h)
     }
 }
 
 private struct ShareVerseWatermark: View {
     let fg: HomeForegroundStyle
+    /// Relative to the original 1× story mark; keeps branding readable on tall exports.
+    var scale: CGFloat = 1
 
     var body: some View {
-        HStack(spacing: 10) {
+        let logo = 36 * scale
+        let corner = 9 * scale
+        HStack(spacing: 10 * scale) {
             Image("LaunchLogo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 36, height: 36)
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .frame(width: logo, height: logo)
+                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
 
             Text("Bible Life")
-                .font(.system(size: 18, weight: .semibold, design: .default))
+                .font(.system(size: 18 * scale, weight: .semibold, design: .default))
                 .foregroundStyle(fg.primary)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 18 * scale)
+        .padding(.vertical, 10 * scale)
         .background(
             Capsule(style: .continuous)
                 .fill(fg.taskCardFill.opacity(0.92))
@@ -138,11 +145,11 @@ private struct ShareVerseWatermark: View {
                         .stroke(fg.glassStroke.opacity(0.9), lineWidth: 1)
                 )
         )
-        .shadow(color: fg.taskCardShadow, radius: 8, x: 0, y: 4)
+        .shadow(color: fg.taskCardShadow, radius: 8 * scale, x: 0, y: 4 * scale)
     }
 }
 
-// MARK: - Streak (streak widget style)
+// MARK: - Streak (full-height story: hero + stat cards + week row)
 
 private let shareWeekdayLabels = ["S", "M", "T", "W", "T", "F", "S"]
 
@@ -151,7 +158,10 @@ struct ShareableStreakCardLayout: View {
     let week: [DailyRecord?]
     let palette: AppThemePalette
 
+    private let w = ShareExportLayout.width
+    private let h = ShareExportLayout.height
     private let pad = ShareExportLayout.horizontalPadding
+    private var s: CGFloat { ShareExportLayout.storyTypographyScale }
 
     /// Seven entries for S–S, padded with `nil` if needed (matches home journey week row).
     private var weekPadded: [DailyRecord?] {
@@ -159,139 +169,194 @@ struct ShareableStreakCardLayout: View {
         return week + Array(repeating: nil, count: 7 - week.count)
     }
 
+    private var heroDiameter: CGFloat { min(w * 0.52, 560) }
+    private var heroNumberSize: CGFloat { heroDiameter * 0.34 }
+    private var dayStreakCaptionSize: CGFloat { max(22, 26 * s / 2.45) }
+    private var headlineSize: CGFloat { max(34, 40 * s / 2.5) }
+    private var statCardCorner: CGFloat { 28 * s / 2.45 }
+    private var weekDot: CGFloat { min(56 * s / 2.45, 68) }
+    private var weekLabelSize: CGFloat { max(16, 18 * s / 2.45) }
+
     var body: some View {
         ZStack {
             ShareThemedCanvas(palette: palette)
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Bible Life")
-                    .font(.system(size: 22, weight: .semibold, design: .serif))
-                    .foregroundStyle(palette.primaryText)
-                Text("My streak")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(palette.secondaryText)
-                    .padding(.bottom, 20)
+            VStack(spacing: 0) {
+                Spacer(minLength: h * 0.06)
 
-                topStatsRow
+                streakStoryHeader
+                    .padding(.horizontal, pad)
 
-                totalDaysCard
-                    .padding(.vertical, 18)
+                Spacer(minLength: h * 0.04)
 
-                Divider()
-                    .overlay(palette.border.opacity(0.75))
-
-                thisWeekSection
-
-                Spacer(minLength: 12)
-
-                Text("Bible Life · Live the Word")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(palette.secondaryText.opacity(0.9))
+                streakHeroOrb
                     .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
+
+                Spacer(minLength: h * 0.045)
+
+                streakStatPairRow
+                    .padding(.horizontal, pad)
+
+                Spacer(minLength: h * 0.05)
+
+                streakWeekSection
+                    .padding(.horizontal, pad)
+
+                Spacer(minLength: h * 0.04)
+
+                streakStoryFooter
+                    .padding(.horizontal, pad + 8)
+
+                Spacer(minLength: h * 0.07)
             }
-            .padding(.horizontal, pad)
-            .padding(.vertical, 44)
+            .frame(width: w, height: h)
         }
-        .frame(width: ShareExportLayout.side, height: ShareExportLayout.side)
+        .frame(width: w, height: h)
     }
 
-    private var topStatsRow: some View {
-        HStack(alignment: .top) {
-            HStack(spacing: 14) {
-                Circle()
-                    .fill(palette.headerAccent.opacity(0.92))
-                    .frame(width: 52, height: 52)
-                    .overlay {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Current Streak")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(palette.secondaryText)
-                    Text("\(summary.currentStreak)")
-                        .font(.system(size: 40, weight: .semibold, design: .rounded))
-                        .foregroundStyle(palette.primaryText)
-                }
-            }
-
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Longest")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(palette.secondaryText)
-                Text("\(summary.longestStreak)")
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+    private var streakStoryHeader: some View {
+        VStack(spacing: 14 * s / 2.6) {
+            HStack(spacing: 14 * s / 2.6) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: headlineSize * 0.62, weight: .semibold))
+                    .foregroundStyle(palette.accent)
+                Text("Streak unlocked")
+                    .font(.system(size: headlineSize, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.primaryText)
             }
-        }
-    }
-
-    private var totalDaysCard: some View {
-        VStack(spacing: 6) {
-            Text("Total Days Completed")
-                .font(.system(size: 15, weight: .medium))
+            Text("Bible Life")
+                .font(.system(size: 20 * s / 2.5, weight: .semibold, design: .serif))
                 .foregroundStyle(palette.secondaryText)
-            Text("\(summary.totalCompletedDays)")
-                .font(.system(size: 36, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.primaryText)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
+        .multilineTextAlignment(.center)
+    }
+
+    private var streakHeroOrb: some View {
+        let streak = summary.currentStreak
+        let caption = streak == 1 ? "DAY STREAK" : "DAYS STREAK"
+        return ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [palette.accent, palette.headerAccent.opacity(0.92)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: heroDiameter, height: heroDiameter)
+                .shadow(color: palette.shadow.opacity(0.35), radius: 28, x: 0, y: 14)
+
+            VStack(spacing: heroDiameter * 0.045) {
+                Text("\(streak)")
+                    .font(.system(size: heroNumberSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .minimumScaleFactor(0.35)
+                    .lineLimit(1)
+                    .shadow(color: .black.opacity(0.12), radius: 2, x: 0, y: 2)
+
+                Text(caption)
+                    .font(.system(size: dayStreakCaptionSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.95))
+                    .tracking(3)
+            }
+            .padding(.vertical, heroDiameter * 0.06)
+        }
+    }
+
+    private var streakStatPairRow: some View {
+        let gap: CGFloat = 22 * s / 2.5
+        let labelPt = max(17, 19 * s / 2.5)
+        let valuePt = max(44, 52 * s / 2.5)
+        return HStack(alignment: .top, spacing: gap) {
+            streakStatCard(title: "Longest", value: "\(summary.longestStreak)", labelPt: labelPt, valuePt: valuePt)
+            streakStatCard(title: "Total days", value: "\(summary.totalCompletedDays)", labelPt: labelPt, valuePt: valuePt)
+        }
+    }
+
+    private func streakStatCard(title: String, value: String, labelPt: CGFloat, valuePt: CGFloat) -> some View {
+        VStack(spacing: 10 * s / 2.5) {
+            Text(title)
+                .font(.system(size: labelPt, weight: .medium, design: .rounded))
+                .foregroundStyle(palette.secondaryText)
+            Text(value)
+                .font(.system(size: valuePt, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28 * s / 2.5)
+        .padding(.horizontal, 12)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(palette.card.opacity(0.55))
+            RoundedRectangle(cornerRadius: statCardCorner, style: .continuous)
+                .fill(palette.card)
+                .shadow(color: palette.shadow.opacity(0.2), radius: 12, x: 0, y: 6)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(palette.border.opacity(0.7), lineWidth: 1)
+            RoundedRectangle(cornerRadius: statCardCorner, style: .continuous)
+                .stroke(palette.border.opacity(0.55), lineWidth: 1)
         )
     }
 
-    private var thisWeekSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private var streakWeekSection: some View {
+        VStack(spacing: 22 * s / 2.5) {
             Text("THIS WEEK")
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: max(15, 17 * s / 2.45), weight: .bold, design: .rounded))
                 .foregroundStyle(palette.primaryText)
+                .tracking(1.2)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { index in
-                    weekdayCell(index: index)
+                    streakWeekdayCell(index: index)
                 }
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(.top, 8)
+        .frame(maxWidth: .infinity)
     }
 
-    private func weekdayCell(index: Int) -> some View {
+    private func streakWeekdayCell(index: Int) -> some View {
         let completed = weekPadded[index]?.completed == true
         let label = shareWeekdayLabels.indices.contains(index) ? shareWeekdayLabels[index] : "?"
-        let circleSize: CGFloat = 52
+        let strokeW: CGFloat = completed ? 0 : max(2, 2.5 * s / 2.45)
 
-        return VStack(spacing: 8) {
-            Circle()
-                .fill(completed ? palette.accent : palette.card)
-                .frame(width: circleSize, height: circleSize)
-                .overlay {
+        return VStack(spacing: 12 * s / 2.5) {
+            ZStack {
+                Circle()
+                    .fill(completed ? palette.accent : Color.clear)
+                    .frame(width: weekDot, height: weekDot)
+                if !completed {
                     Circle()
-                        .stroke(completed ? palette.accent.opacity(0.35) : palette.border, lineWidth: 1)
+                        .stroke(palette.accent.opacity(0.85), lineWidth: strokeW)
+                        .frame(width: weekDot, height: weekDot)
                 }
-                .overlay {
-                    if completed {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
+                if completed {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: weekDot * 0.36, weight: .bold))
+                        .foregroundStyle(.white)
                 }
+            }
 
             Text(label)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(palette.secondaryText)
+                .font(.system(size: weekLabelSize, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primaryText)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var streakStoryFooter: some View {
+        VStack(spacing: 20 * s / 2.5) {
+            Text("Consistency is worship")
+                .font(.system(size: max(22, 26 * s / 2.45), weight: .semibold, design: .serif))
+                .foregroundStyle(palette.primaryText.opacity(0.92))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+
+            Text("Bible Life · Live the Word")
+                .font(.system(size: max(16, 18 * s / 2.55), weight: .medium, design: .rounded))
+                .foregroundStyle(palette.secondaryText.opacity(0.95))
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
     }
@@ -305,12 +370,12 @@ struct ShareableCardPreview: View {
     var verseShareIncludesTask: Bool = true
 
     var body: some View {
-        let w = ShareExportLayout.side
-        let h = ShareExportLayout.side
+        let w = ShareExportLayout.width
+        let h = ShareExportLayout.height
 
         Color.clear
             .frame(maxHeight: ShareExportLayout.previewMaxHeight)
-            .aspectRatio(1, contentMode: .fit)
+            .aspectRatio(ShareExportLayout.aspectRatio, contentMode: .fit)
             .overlay {
                 GeometryReader { geo in
                     let scale = min(geo.size.width / w, geo.size.height / h)
@@ -356,8 +421,8 @@ enum ShareImageRenderer {
         if #available(iOS 17.0, *) {
             renderer.isOpaque = true
             renderer.proposedSize = ProposedViewSize(
-                width: ShareExportLayout.side,
-                height: ShareExportLayout.side
+                width: ShareExportLayout.width,
+                height: ShareExportLayout.height
             )
         }
         return renderer.uiImage
