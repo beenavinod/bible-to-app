@@ -24,12 +24,21 @@ struct HomeWallpaperBackgroundView: View {
     let wallpaper: HomeWallpaper
 
     var body: some View {
-        Group {
-            if let gradient = wallpaper.homeLinearGradient {
-                gradient
-            } else {
-                wallpaper.solidBackgroundColor
+        GeometryReader { geo in
+            Group {
+                if let assetName = wallpaper.imageAssetName {
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .overlay(Color.black.opacity(0.18))
+                } else if let gradient = wallpaper.homeLinearGradient {
+                    gradient
+                } else {
+                    wallpaper.solidBackgroundColor
+                }
             }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
         }
         .ignoresSafeArea()
     }

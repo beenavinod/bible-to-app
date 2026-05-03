@@ -42,26 +42,26 @@ private struct HomeDayTaskTitleBody: View {
         VStack(alignment: .leading, spacing: 8 * fontScale) {
             Text(record.verse.taskTitle)
                 .font(.system(size: 17 * fontScale, weight: .semibold, design: .default))
-                .foregroundStyle(fg.primary)
+                .foregroundStyle(fg.taskCardPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(record.verse.taskDescription)
                 .font(.system(size: 15 * fontScale, weight: .regular, design: .default))
-                .foregroundStyle(fg.secondary)
+                .foregroundStyle(fg.taskCardSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if !record.verse.taskQuote.isEmpty {
                 Text(record.verse.taskQuote)
                     .font(.system(size: 12 * fontScale, weight: .regular, design: .default))
                     .italic()
-                    .foregroundStyle(fg.tertiary)
+                    .foregroundStyle(fg.taskCardTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             if !isViewingToday && !record.completed {
                 Text("Past day — view only")
                     .font(.system(size: 12 * fontScale, weight: .regular, design: .default))
-                    .foregroundStyle(fg.secondary)
+                    .foregroundStyle(fg.taskCardSecondary)
                     .padding(.top, 2 * fontScale)
             }
         }

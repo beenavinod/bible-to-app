@@ -74,7 +74,12 @@ struct ShareableVerseCardLayout: View {
 
         ZStack {
             Group {
-                if let gradient = wallpaper.homeLinearGradient {
+                if let assetName = wallpaper.imageAssetName {
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .overlay(Color.black.opacity(0.18))
+                } else if let gradient = wallpaper.homeLinearGradient {
                     gradient
                 } else {
                     wallpaper.solidBackgroundColor

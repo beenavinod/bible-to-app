@@ -43,7 +43,7 @@ enum AppBackground: String, CaseIterable, Codable {
     }
 }
 
-/// Light solid fills and soft vertical gradients for the Home tab.
+/// Light solid fills, soft vertical gradients, and bundled photo wallpapers for the Home tab.
 enum HomeWallpaper: String, CaseIterable, Codable {
     case w1
     case w2
@@ -61,6 +61,15 @@ enum HomeWallpaper: String, CaseIterable, Codable {
     case g4
     case g5
     case g6
+    case p1
+    case p2
+    case p3
+    case p4
+    case p5
+    case p6
+    case p7
+    case p8
+    case p9
 
     static let defaultWallpaper = HomeWallpaper.w1
 
@@ -82,10 +91,40 @@ enum HomeWallpaper: String, CaseIterable, Codable {
         case .g4: "Rose to shell"
         case .g5: "Periwinkle mist"
         case .g6: "Sage to linen"
+        case .p1: "Morning light"
+        case .p2: "Olive garden"
+        case .p3: "Golden hour"
+        case .p4: "Calm waters"
+        case .p5: "Mountain mist"
+        case .p6: "Desert rose"
+        case .p7: "Forest path"
+        case .p8: "Sunset glow"
+        case .p9: "Meadow bloom"
         }
     }
 
+    /// Asset catalog image name for photo wallpapers, `nil` for color/gradient wallpapers.
+    var imageAssetName: String? {
+        switch self {
+        case .p1: "HomeWallpaper01"
+        case .p2: "HomeWallpaper02"
+        case .p3: "HomeWallpaper03"
+        case .p4: "HomeWallpaper04"
+        case .p5: "HomeWallpaper05"
+        case .p6: "HomeWallpaper06"
+        case .p7: "HomeWallpaper07"
+        case .p8: "HomeWallpaper08"
+        case .p9: "HomeWallpaper09"
+        default: nil
+        }
+    }
+
+    /// `true` when this wallpaper renders a bundled image rather than a programmatic fill.
+    var isImageWallpaper: Bool { imageAssetName != nil }
+
     /// Full-bleed solid fill, or the **top** stop of a gradient (for previews / fallbacks).
+    /// Photo wallpapers return a warm neutral so the picker thumbnail has a tinted background
+    /// while the actual image loads.
     var solidBackgroundColor: Color {
         switch self {
         case .w1:
@@ -120,13 +159,16 @@ enum HomeWallpaper: String, CaseIterable, Codable {
             Color(red: 0.84, green: 0.87, blue: 0.98)
         case .g6:
             Color(red: 0.86, green: 0.92, blue: 0.87)
+        case .p1, .p2, .p3, .p4, .p5, .p6, .p7, .p8, .p9:
+            Color(red: 0.94, green: 0.92, blue: 0.88)
         }
     }
 
     /// When non-`nil`, use this instead of `solidBackgroundColor` for the full-screen Home backdrop.
     var homeLinearGradient: LinearGradient? {
         switch self {
-        case .w1, .w2, .w3, .w4, .w5, .w6, .w7, .w8, .w9, .w10:
+        case .w1, .w2, .w3, .w4, .w5, .w6, .w7, .w8, .w9, .w10,
+             .p1, .p2, .p3, .p4, .p5, .p6, .p7, .p8, .p9:
             nil
         case .g1:
             LinearGradient(
@@ -191,9 +233,25 @@ enum HomeWallpaper: String, CaseIterable, Codable {
         }
     }
 
-    /// Text / chrome on the Home screen (always dark on these light fills).
+    /// Text / chrome on the Home screen.
+    /// Solid / gradient fills use dark-on-light; photo wallpapers use light-on-dark with stronger
+    /// legibility shadows so text remains readable over unpredictable imagery.
     var homeForeground: HomeForegroundStyle {
-        HomeForegroundStyle(
+        if isImageWallpaper {
+            return HomeForegroundStyle(
+                primary: .white,
+                secondary: Color.white.opacity(0.82),
+                tertiary: Color.white.opacity(0.60),
+                glassStroke: Color.white.opacity(0.25),
+                legibilityShadow: Color.black.opacity(0.55),
+                iconBackdrop: Color.black.opacity(0.32),
+                taskCardFill: Color(red: 0.99, green: 0.98, blue: 0.97),
+                taskHoldTrackFill: Color.white.opacity(0.15),
+                taskCardShadow: Color.black.opacity(0.28),
+                prefersLightStatusBar: true
+            )
+        }
+        return HomeForegroundStyle(
             primary: Color(red: 0.11, green: 0.11, blue: 0.12),
             secondary: Color(red: 0.11, green: 0.11, blue: 0.12).opacity(0.62),
             tertiary: Color(red: 0.11, green: 0.11, blue: 0.12).opacity(0.42),
@@ -222,6 +280,17 @@ struct HomeForegroundStyle {
     let taskHoldTrackFill: Color
     let taskCardShadow: Color
     let prefersLightStatusBar: Bool
+
+    /// Always-dark text for content inside the task card (which has a light fill regardless of wallpaper).
+    var taskCardPrimary: Color {
+        Color(red: 0.11, green: 0.11, blue: 0.12)
+    }
+    var taskCardSecondary: Color {
+        Color(red: 0.11, green: 0.11, blue: 0.12).opacity(0.62)
+    }
+    var taskCardTertiary: Color {
+        Color(red: 0.11, green: 0.11, blue: 0.12).opacity(0.42)
+    }
 }
 
 enum ColorToken: String, Codable, CaseIterable {
@@ -345,8 +414,8 @@ extension AppBackground {
 
 
 extension HomeWallpaper {
-    /// Gradient home wallpapers (`g1`–`g6`) require Premium.
-    var isPremiumOnly: Bool { homeLinearGradient != nil }
+    /// Gradient and photo wallpapers require Premium.
+    var isPremiumOnly: Bool { homeLinearGradient != nil || isImageWallpaper }
 }
 
 extension AppBackground {

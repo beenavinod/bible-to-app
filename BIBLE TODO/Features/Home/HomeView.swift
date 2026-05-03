@@ -276,11 +276,11 @@ struct HomeView: View {
                                 )
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 26, weight: .semibold))
-                                .foregroundStyle(fg.secondary)
+                                .foregroundStyle(fg.taskCardSecondary)
                         }
                         Text("View only")
                             .font(.caption.weight(.medium))
-                            .foregroundStyle(fg.secondary)
+                            .foregroundStyle(fg.taskCardSecondary)
                     }
                 }
             }
