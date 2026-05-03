@@ -500,10 +500,33 @@ final class BibleTodoRepository: Sendable {
             .execute()
         let total = countResponse.count ?? 0
 
+        let reconciledStreak = Self.reconcileCurrentStreak(
+            stored: row.currentStreak,
+            lastCompletedDate: row.lastCompletedDate
+        )
+
         return StreakSummary(
-            currentStreak: row.currentStreak,
+            currentStreak: reconciledStreak,
             longestStreak: row.longestStreak,
             totalCompletedDays: total
         )
+    }
+
+    /// If the stored streak's `lastCompletedDate` is older than yesterday, the
+    /// streak has been broken — return 0 regardless of the stored value.
+    private static func reconcileCurrentStreak(stored: Int, lastCompletedDate: String?) -> Int {
+        guard let lastDateString = lastCompletedDate,
+              let lastDate = BibleTodoDate.parseLocalDay(lastDateString) else {
+            return 0
+        }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return 0 }
+        let lastDay = calendar.startOfDay(for: lastDate)
+
+        if lastDay >= yesterday {
+            return stored
+        }
+        return 0
     }
 }

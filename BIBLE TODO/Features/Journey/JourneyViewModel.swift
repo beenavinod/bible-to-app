@@ -113,10 +113,44 @@ final class JourneyViewModel: ObservableObject {
         let completed = records.filter(\.completed)
         let localStreak = StreakCalculation.consecutiveCompletedDayStreak(records: records)
         summary = StreakSummary(
-            currentStreak: max(summary.currentStreak, localStreak),
-            longestStreak: summary.longestStreak,
+            currentStreak: localStreak,
+            longestStreak: max(summary.longestStreak, localStreak),
             totalCompletedDays: completed.count
         )
+    }
+
+    /// Counts consecutive completed calendar days ending at today (or yesterday).
+    /// Returns 0 if neither today nor yesterday is completed.
+    private func currentCompletedStreak() -> Int {
+        let calendar = Calendar.current
+        let completedDates: Set<DateComponents> = Set(
+            records
+                .filter(\.completed)
+                .map { calendar.dateComponents([.year, .month, .day], from: $0.verse.date) }
+        )
+
+        let today = calendar.startOfDay(for: .now)
+        let todayComponents = calendar.dateComponents([.year, .month, .day], from: today)
+
+        var anchor: Date
+        if completedDates.contains(todayComponents) {
+            anchor = today
+        } else if let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+                  completedDates.contains(calendar.dateComponents([.year, .month, .day], from: yesterday)) {
+            anchor = yesterday
+        } else {
+            return 0
+        }
+
+        var count = 0
+        while true {
+            let components = calendar.dateComponents([.year, .month, .day], from: anchor)
+            guard completedDates.contains(components) else { break }
+            count += 1
+            guard let previousDay = calendar.date(byAdding: .day, value: -1, to: anchor) else { break }
+            anchor = previousDay
+        }
+        return count
     }
 
     private func syncWidgetData() {
