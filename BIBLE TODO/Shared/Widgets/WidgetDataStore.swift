@@ -27,7 +27,10 @@ struct SharedStreakData: Codable {
     let currentStreak: Int
     let longestStreak: Int
     let totalCompletedDays: Int
+    /// Five rolling calendar days (day-of-month labels) for the **medium** widget.
     let weekDays: [SharedWeekDay]
+    /// Seven days for the current locale week (short weekday initial) for the **large** widget; mirrors the share card strip.
+    var calendarWeek: [SharedWeekDay]? = nil
 }
 
 /// A single unlocked achievement icon for the lock-screen widget.

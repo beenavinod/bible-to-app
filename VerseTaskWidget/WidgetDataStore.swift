@@ -28,6 +28,7 @@ struct SharedStreakData: Codable {
     let longestStreak: Int
     let totalCompletedDays: Int
     let weekDays: [SharedWeekDay]
+    var calendarWeek: [SharedWeekDay]? = nil
 }
 
 /// A single unlocked achievement icon for the lock-screen widget.

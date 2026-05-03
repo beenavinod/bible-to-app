@@ -182,11 +182,30 @@ final class JourneyViewModel: ObservableObject {
             return SharedWeekDay(symbol: label, isCompleted: completed)
         }
 
+        /// Current locale week (7 days), same window as `weeklyRecords` / share card “THIS WEEK”.
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        let weekdaySymbols = calendar.shortWeekdaySymbols
+        let calendarWeek: [SharedWeekDay] = (0..<7).map { offset in
+            let day = calendar.date(byAdding: .day, value: offset, to: startOfWeek) ?? today
+            let completed = records.contains { record in
+                record.completed && calendar.isDate(record.verse.date, inSameDayAs: day)
+            }
+            let wdIndex = calendar.component(.weekday, from: day) - 1
+            let label: String
+            if weekdaySymbols.indices.contains(wdIndex) {
+                label = String(weekdaySymbols[wdIndex].prefix(1))
+            } else {
+                label = "?"
+            }
+            return SharedWeekDay(symbol: label, isCompleted: completed)
+        }
+
         WidgetDataStore.writeStreak(SharedStreakData(
             currentStreak: summary.currentStreak,
             longestStreak: summary.longestStreak,
             totalCompletedDays: summary.totalCompletedDays,
-            weekDays: weekDays
+            weekDays: weekDays,
+            calendarWeek: calendarWeek
         ))
         WidgetCenter.shared.reloadTimelines(ofKind: "StreakWidget")
     }
