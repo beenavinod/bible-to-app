@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import SwiftUI
 
-struct WidgetInfo: Identifiable {
+struct WidgetInfo: Identifiable, Hashable {
     let id: String
     let name: String
     let description: String

@@ -58,7 +58,7 @@ struct JourneyView: View {
                 onSelectForLockScreen: { viewModel.setLockScreenWidgetBadgeId(badge.id) },
                 onClearLockScreenSelection: { viewModel.setLockScreenWidgetBadgeId(nil) }
             )
-            .presentationDetents([.medium])
+            .presentationDetents([.height(640), .large])
             .presentationDragIndicator(.visible)
         }
     }
@@ -140,7 +140,6 @@ struct JourneyView: View {
                             AchievementBadgeView(
                                 achievement: achievement,
                                 unlocked: viewModel.isBadgeEarned(achievement),
-                                isLockScreenSelected: viewModel.lockScreenWidgetBadgeId == achievement.id,
                                 palette: appState.palette
                             )
                         }

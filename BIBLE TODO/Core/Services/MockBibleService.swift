@@ -22,10 +22,7 @@ final class MockBibleService: BibleService {
     func fetchStreakSummary() async throws -> StreakSummary {
         try await Task.sleep(for: .milliseconds(100))
         let completedRecords = records.filter(\.completed)
-        let currentStreak = records
-            .sorted { $0.verse.date > $1.verse.date }
-            .prefix { $0.completed }
-            .count
+        let currentStreak = StreakCalculation.consecutiveCompletedDayStreak(records: records)
 
         return StreakSummary(
             currentStreak: currentStreak,

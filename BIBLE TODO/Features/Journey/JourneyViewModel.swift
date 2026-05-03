@@ -111,18 +111,12 @@ final class JourneyViewModel: ObservableObject {
 
     private func recalculateSummary() {
         let completed = records.filter(\.completed)
+        let localStreak = StreakCalculation.consecutiveCompletedDayStreak(records: records)
         summary = StreakSummary(
-            currentStreak: max(summary.currentStreak, currentCompletedStreak()),
-            longestStreak: max(summary.longestStreak, currentCompletedStreak()),
+            currentStreak: max(summary.currentStreak, localStreak),
+            longestStreak: summary.longestStreak,
             totalCompletedDays: completed.count
         )
-    }
-
-    private func currentCompletedStreak() -> Int {
-        records
-            .sorted { $0.verse.date > $1.verse.date }
-            .prefix { $0.completed }
-            .count
     }
 
     private func syncWidgetData() {

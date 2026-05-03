@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var subscription: SubscriptionManager
     @StateObject private var viewModel: SettingsViewModel
+    @State private var widgetSetupGuide: WidgetInfo?
 
     init(appState: AppState) {
         _viewModel = StateObject(wrappedValue: SettingsViewModel(appState: appState))
@@ -39,6 +40,11 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(item: $widgetSetupGuide) { widget in
+            WidgetSetupGuideView(widget: widget, palette: appState.palette) {
+                widgetSetupGuide = nil
+            }
+        }
     }
 
     private var goPremiumCard: some View {
@@ -96,12 +102,14 @@ struct SettingsView: View {
     private func widgetRow(_ widget: WidgetInfo) -> some View {
         let isLocked = widget.isPremiumOnly && !subscription.isPremium
 
-        return Button {
-            if isLocked {
-                subscription.presentPaywall()
-            }
-        } label: {
-            HStack(spacing: 12) {
+        return HStack(spacing: 12) {
+            Button {
+                if isLocked {
+                    subscription.presentPaywall()
+                } else {
+                    widgetSetupGuide = widget
+                }
+            } label: {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(appState.palette.accent.opacity(isLocked ? 0.15 : 0.18))
                     .frame(width: 40, height: 40)
@@ -114,7 +122,43 @@ struct SettingsView: View {
                                     : appState.palette.accent
                             )
                     }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isLocked ? "\(widget.name), premium" : "How to add \(widget.name)")
 
+            if isLocked {
+                Button {
+                    subscription.presentPaywall()
+                } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(widget.name)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(appState.palette.primaryText)
+                            Text(widget.description)
+                                .font(.caption)
+                                .foregroundStyle(appState.palette.secondaryText)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        HStack(spacing: 4) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text("Premium")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(appState.palette.accentSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(appState.palette.accentSecondary.opacity(0.12))
+                        )
+                    }
+                }
+                .buttonStyle(.plain)
+            } else {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(widget.name)
                         .font(.subheadline.weight(.medium))
@@ -123,27 +167,9 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(appState.palette.secondaryText)
                 }
-
                 Spacer(minLength: 0)
-
-                if isLocked {
-                    HStack(spacing: 4) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                        Text("Premium")
-                            .font(.caption.weight(.semibold))
-                    }
-                    .foregroundStyle(appState.palette.accentSecondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(appState.palette.accentSecondary.opacity(0.12))
-                    )
-                }
             }
         }
-        .buttonStyle(.plain)
     }
 
     #if DEBUG

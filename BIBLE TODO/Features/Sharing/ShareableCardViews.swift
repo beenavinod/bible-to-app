@@ -522,7 +522,7 @@ struct ShareDrawerSheet: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(palette.card)
+        .background(palette.canvas)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(palette.border.opacity(0.55))

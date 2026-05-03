@@ -333,8 +333,6 @@ struct WeekProgressView: View {
 struct AchievementBadgeView: View {
     let achievement: Achievement
     let unlocked: Bool
-    /// Highlight when this badge is the one chosen for the Lock Screen accessory widget.
-    var isLockScreenSelected: Bool = false
     let palette: AppThemePalette
 
     private var subtitle: String {
@@ -388,17 +386,6 @@ struct AchievementBadgeView: View {
                         .offset(x: -4, y: -4)
                 }
             }
-            .overlay(alignment: .topLeading) {
-                if unlocked, isLockScreenSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(palette.accent)
-                        .shadow(color: palette.card, radius: 0, x: 0, y: 0)
-                        .shadow(color: palette.card, radius: 1, x: 0, y: 0)
-                        .accessibilityLabel("Selected for Lock Screen widget")
-                        .offset(x: 2, y: 2)
-                }
-            }
     }
 
     private var badgeLabel: some View {
@@ -428,90 +415,90 @@ struct BadgeDetailSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Spacer(minLength: 24)
-
-                ZStack {
-                    Circle()
-                        .fill(palette.accent.opacity(0.15))
-                        .frame(width: 120, height: 120)
-                        .overlay {
-                            Circle()
-                                .stroke(palette.accent.opacity(0.4), lineWidth: 2)
-                        }
-                        .shadow(
-                            color: unlocked ? achievement.rarity.glowColor : .clear,
-                            radius: unlocked ? 16 : 0
-                        )
-
-                    Image(systemName: achievement.symbolName)
-                        .font(.system(size: 48))
-                        .foregroundStyle(palette.accent)
-
-                    if !unlocked {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(palette.secondaryText.opacity(0.7))
-                            .padding(5)
-                            .background(
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    ZStack {
+                        Circle()
+                            .fill(palette.accent.opacity(0.15))
+                            .frame(width: 120, height: 120)
+                            .overlay {
                                 Circle()
-                                    .fill(palette.card)
-                                    .shadow(color: palette.shadow, radius: 2, y: 1)
+                                    .stroke(palette.accent.opacity(0.4), lineWidth: 2)
+                            }
+                            .shadow(
+                                color: unlocked ? achievement.rarity.glowColor : .clear,
+                                radius: unlocked ? 16 : 0
                             )
-                            .offset(x: 38, y: 38)
+
+                        Image(systemName: achievement.symbolName)
+                            .font(.system(size: 48))
+                            .foregroundStyle(palette.accent)
+
+                        if !unlocked {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(palette.secondaryText.opacity(0.7))
+                                .padding(5)
+                                .background(
+                                    Circle()
+                                        .fill(palette.card)
+                                        .shadow(color: palette.shadow, radius: 2, y: 1)
+                                )
+                                .offset(x: 38, y: 38)
+                        }
                     }
-                }
 
-                Text(achievement.name)
-                    .font(.system(.title2, design: .serif, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
-                    .padding(.top, 20)
+                    Text(achievement.name)
+                        .font(.system(.title2, design: .serif, weight: .semibold))
+                        .foregroundStyle(palette.primaryText)
+                        .padding(.top, 20)
 
-                Text(achievement.badgeDescription)
-                    .font(.body)
-                    .foregroundStyle(palette.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 6)
+                    Text(achievement.badgeDescription)
+                        .font(.body)
+                        .foregroundStyle(palette.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 6)
+                        .padding(.horizontal, 32)
+
+                    Divider()
+                        .overlay(palette.border.opacity(0.7))
+                        .padding(.vertical, 24)
+                        .padding(.horizontal, 40)
+
+                    VStack(spacing: 14) {
+                        badgeInfoRow(label: "Type", value: badgeTypeLabel)
+                        badgeInfoRow(label: "Rarity", value: achievement.rarity.rawValue.capitalized)
+                        badgeInfoRow(label: "Requirement", value: requirementLabel)
+                        badgeInfoRow(label: "Status", value: unlocked ? "Earned" : "Locked")
+                    }
                     .padding(.horizontal, 32)
 
-                Divider()
-                    .overlay(palette.border.opacity(0.7))
-                    .padding(.vertical, 24)
-                    .padding(.horizontal, 40)
-
-                VStack(spacing: 14) {
-                    badgeInfoRow(label: "Type", value: badgeTypeLabel)
-                    badgeInfoRow(label: "Rarity", value: achievement.rarity.rawValue.capitalized)
-                    badgeInfoRow(label: "Requirement", value: requirementLabel)
-                    badgeInfoRow(label: "Status", value: unlocked ? "Earned" : "Locked")
-                }
-                .padding(.horizontal, 32)
-
-                if unlocked {
-                    lockScreenWidgetSection
-                        .padding(.horizontal, 28)
-                        .padding(.top, 8)
-                }
-
-                Spacer(minLength: 24)
-
-                if unlocked {
-                    HStack(spacing: 6) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(palette.accent)
-                        Text("You earned this badge!")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(palette.accent)
+                    if unlocked {
+                        lockScreenWidgetSection
+                            .padding(.horizontal, 28)
+                            .padding(.top, 24)
                     }
-                    .padding(.bottom, 24)
-                } else {
-                    Text("Keep going to unlock this badge")
-                        .font(.subheadline)
-                        .foregroundStyle(palette.secondaryText)
-                        .padding(.bottom, 24)
+
+                    if unlocked {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundStyle(palette.accent)
+                            Text("You earned this badge!")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(palette.accent)
+                        }
+                        .padding(.top, 24)
+                    } else {
+                        Text("Keep going to unlock this badge")
+                            .font(.subheadline)
+                            .foregroundStyle(palette.secondaryText)
+                            .padding(.top, 24)
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 32)
+                .padding(.bottom, 28)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(palette.canvas.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -280,13 +280,9 @@ final class BibleTodoRepository: Sendable {
             .execute()
             .value
 
-        let today = completedDate
-        guard let yesterdayDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else {
-            throw BibleTodoRepositoryError.invalidConfiguration
-        }
-        let yesterday = BibleTodoDate.formatLocalDay(yesterdayDate)
+        let completedDayISO = completedDate
 
-        if streak.lastCompletedDate == today {
+        if streak.lastCompletedDate == completedDayISO {
             return StreakInfo(
                 currentStreak: streak.currentStreak,
                 longestStreak: streak.longestStreak,
@@ -294,8 +290,14 @@ final class BibleTodoRepository: Sendable {
             )
         }
 
+        guard let completedDay = BibleTodoDate.parseLocalDay(completedDayISO),
+              let priorCalendarDay = Calendar.current.date(byAdding: .day, value: -1, to: completedDay) else {
+            throw BibleTodoRepositoryError.invalidConfiguration
+        }
+        let priorDayISO = BibleTodoDate.formatLocalDay(priorCalendarDay)
+
         let newCurrent: Int
-        if streak.lastCompletedDate == yesterday {
+        if streak.lastCompletedDate == priorDayISO {
             newCurrent = streak.currentStreak + 1
         } else {
             newCurrent = 1
@@ -306,7 +308,7 @@ final class BibleTodoRepository: Sendable {
         let streakPatch: JSONObject = [
             "current_streak": .integer(newCurrent),
             "longest_streak": .integer(newLongest),
-            "last_completed_date": .string(today)
+            "last_completed_date": .string(completedDayISO)
         ]
         try await client
             .from("user_streaks")

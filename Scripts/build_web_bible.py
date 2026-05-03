@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Download World English Bible (en-web) from wldeh/bible-api and emit a single JSON
-bundle for the Protestant 66-book canon. Strips common inline WEB translator notes.
+bundle for the Protestant 66-book canon. Strips common inline WEB translator notes
+and drops identical full-chapter repeats (common in Psalms in that API feed).
 
   python3 Scripts/build_web_bible.py
 
@@ -101,9 +102,27 @@ def clean_verse_text(text: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _row_fingerprint(row: dict) -> tuple[int, str]:
+    return (int(row["verse"]), (row.get("text") or "").strip())
+
+
+def dedupe_repeated_chapter_cycles(rows: list[dict]) -> list[dict]:
+    """wldeh/bible-api en-web often repeats the entire chapter 2–3× identically; keep one copy."""
+    n = len(rows)
+    if n < 2:
+        return rows
+    keyed = [_row_fingerprint(r) for r in rows]
+    for period in range(1, n // 2 + 1):
+        if n % period != 0:
+            continue
+        head = tuple(keyed[:period])
+        if all(tuple(keyed[i : i + period]) == head for i in range(period, n, period)):
+            return rows[:period]
+    return rows
+
+
 def merge_duplicate_verse_numbers(rows: list[dict]) -> list[dict]:
     """WEB JSON repeats the same verse number for poetic lines; one row per verse."""
-    order: list[int] = []
     merged: dict[int, str] = {}
     for row in rows:
         n = int(row["verse"])
@@ -111,7 +130,6 @@ def merge_duplicate_verse_numbers(rows: list[dict]) -> list[dict]:
         if n in merged:
             merged[n] += " " + t
         else:
-            order.append(n)
             merged[n] = t
     return [{"n": n, "t": merged[n]} for n in sorted(merged.keys(), key=int)]
 
@@ -141,6 +159,7 @@ def main() -> int:
                 return 1
             if not book_name:
                 book_name = rows[0].get("book") or slug
+            rows = dedupe_repeated_chapter_cycles(rows)
             verses = merge_duplicate_verse_numbers(rows)
             chapters_out.append({"book": book_name, "chapter": ch, "verses": verses})
             time.sleep(0.005)
